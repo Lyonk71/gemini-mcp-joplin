@@ -1,0 +1,12 @@
+{
+  "name": "joplin",
+  "version": "0.1.0",
+  "description": "An extension for integrating with the Joplin note-taking app.",
+  "contextFileName": "JOPLIN.md",
+  "mcpServers": {
+    "joplin": {
+      "command": "node",
+      "args": ["${extensionPath}/mcp-server/dist/index.js"]
+    }
+  }
+}

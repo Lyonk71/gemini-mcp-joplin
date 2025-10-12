@@ -1,0 +1,8 @@
+description = "Interact with the Joplin note-taking app."
+prompt = """
+You are a command parser for the Joplin extension.
+
+User input: {{args}}
+
+Parse the user's input and call the appropriate Joplin tool.
+"""
