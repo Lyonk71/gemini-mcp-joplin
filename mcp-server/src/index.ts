@@ -6,55 +6,49 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import Database from 'better-sqlite3';
 import { homedir } from 'os';
 import { join } from 'path';
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 
 /**
- * Auto-discover Joplin API token from the database
+ * Auto-discover Joplin API token from settings.json
  */
 function discoverJoplinToken(): string | null {
   try {
-    // Determine database path based on OS
-    let dbPath: string;
+    // Determine settings path based on OS
+    let settingsPath: string;
     const platform = process.platform;
 
     if (platform === 'darwin') {
       // macOS
-      dbPath = join(homedir(), 'Library', 'Application Support', 'joplin-desktop', 'database.sqlite');
+      settingsPath = join(homedir(), 'Library', 'Application Support', 'joplin-desktop', 'settings.json');
     } else if (platform === 'win32') {
       // Windows
-      dbPath = join(process.env.APPDATA || '', 'joplin-desktop', 'database.sqlite');
+      settingsPath = join(process.env.APPDATA || '', 'joplin-desktop', 'settings.json');
     } else {
       // Linux and others
-      dbPath = join(homedir(), '.config', 'joplin-desktop', 'database.sqlite');
+      settingsPath = join(homedir(), '.config', 'joplin-desktop', 'settings.json');
     }
 
-    // Check if database exists
-    if (!existsSync(dbPath)) {
-      console.info(`[Info] Joplin database not found at: ${dbPath}`);
+    // Check if settings file exists
+    if (!existsSync(settingsPath)) {
+      console.error(`[Info] Joplin settings not found at: ${settingsPath}`);
       return null;
     }
 
-    // Open database and query for token
-    const db = new Database(dbPath, { readonly: true });
-    try {
-      const row = db.prepare('SELECT value FROM settings WHERE key = ?').get('api.token') as { value: string } | undefined;
+    // Read and parse settings.json
+    const settingsContent = readFileSync(settingsPath, 'utf-8');
+    const settings = JSON.parse(settingsContent);
 
-      if (!row) {
-        console.info('[Info] API token not found in Joplin database');
-        console.info('[Info] Make sure Web Clipper is enabled in Joplin settings');
-        return null;
-      }
-
-      // The value is stored as JSON, so we need to parse it
-      const token = JSON.parse(row.value);
-      console.error('[Info] Successfully auto-discovered Joplin API token');
-      return token;
-    } finally {
-      db.close();
+    if (!settings['api.token']) {
+      console.error('[Info] API token not found in Joplin settings');
+      console.error('[Info] Make sure Web Clipper is enabled in Joplin settings');
+      return null;
     }
+
+    const token = settings['api.token'];
+    console.error('[Info] Successfully auto-discovered Joplin API token');
+    return token;
   } catch (error) {
     console.error('[Warning] Failed to auto-discover Joplin token:', error instanceof Error ? error.message : error);
     return null;
@@ -76,7 +70,7 @@ class JoplinApiClient {
       if (!isNaN(parsedPort) && parsedPort > 0 && parsedPort <= 65535) {
         port = parsedPort.toString();
       } else {
-        console.warn(`[Warning] Invalid JOPLIN_PORT: "${rawPort}". Falling back to default port 41184.`);
+        console.error(`[Warning] Invalid JOPLIN_PORT: "${rawPort}". Falling back to default port 41184.`);
       }
     }
     this.baseUrl = `http://localhost:${port}`;
