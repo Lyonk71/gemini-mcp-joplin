@@ -69,7 +69,16 @@ class JoplinApiClient {
   private token: string;
 
   constructor() {
-    const port = process.env.JOPLIN_PORT || '41184';
+    const rawPort = process.env.JOPLIN_PORT;
+    let port = '41184';
+    if (rawPort) {
+      const parsedPort = parseInt(rawPort, 10);
+      if (!isNaN(parsedPort) && parsedPort > 0 && parsedPort <= 65535) {
+        port = parsedPort.toString();
+      } else {
+        console.warn(`[Warning] Invalid JOPLIN_PORT: "${rawPort}". Falling back to default port 41184.`);
+      }
+    }
     this.baseUrl = `http://localhost:${port}`;
 
     // Try to get token from: 1) env var, 2) auto-discovery
