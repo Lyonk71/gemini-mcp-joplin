@@ -33,7 +33,7 @@ function discoverJoplinToken(): string | null {
 
     // Check if database exists
     if (!existsSync(dbPath)) {
-      console.error(`[Info] Joplin database not found at: ${dbPath}`);
+      console.info(`[Info] Joplin database not found at: ${dbPath}`);
       return null;
     }
 
@@ -43,8 +43,8 @@ function discoverJoplinToken(): string | null {
       const row = db.prepare('SELECT value FROM settings WHERE key = ?').get('api.token') as { value: string } | undefined;
 
       if (!row) {
-        console.error('[Info] API token not found in Joplin database');
-        console.error('[Info] Make sure Web Clipper is enabled in Joplin settings');
+        console.info('[Info] API token not found in Joplin database');
+        console.info('[Info] Make sure Web Clipper is enabled in Joplin settings');
         return null;
       }
 
@@ -174,7 +174,7 @@ class JoplinApiClient {
     return this.updateNote(noteId, { body: updatedBody });
   }
 
-  async deleteNote(noteId: string, permanent: boolean = false): Promise<void> {
+  async deleteNote(noteId: string, permanent: boolean = false): Promise<any> {
     const url = permanent ? `/notes/${noteId}?permanent=1` : `/notes/${noteId}`;
     return this.request('DELETE', url);
   }
@@ -629,10 +629,10 @@ class JoplinServer {
       await this.apiClient.ping();
       console.error('Successfully connected to Joplin');
     } catch (error) {
-      console.error('Warning: Could not connect to Joplin. Make sure:');
-      console.error('  1. Joplin desktop app is running');
-      console.error('  2. Web Clipper service is enabled (Settings → Web Clipper)');
-      console.error('  3. JOPLIN_TOKEN environment variable is set');
+      console.error('[Warning] Could not connect to Joplin. Please ensure:');
+      console.error('  1. The Joplin desktop application is running.');
+      console.error('  2. The Web Clipper service is enabled in Joplin (Settings → Web Clipper).');
+      console.error('If auto-discovery of the API token fails, you may also need to set the JOPLIN_TOKEN environment variable manually.');
     }
   }
 }
