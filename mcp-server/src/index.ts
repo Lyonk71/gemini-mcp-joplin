@@ -142,6 +142,10 @@ class JoplinApiClient {
     return this.request('GET', `/folders/${notebookId}/notes?fields=${fieldsParam}`);
   }
 
+  async deleteNotebook(notebookId: string): Promise<any> {
+    return this.request('DELETE', `/folders/${notebookId}`);
+  }
+
   // Note operations
   async searchNotes(query: string, type?: string): Promise<any> {
     let url = `/search?query=${encodeURIComponent(query)}`;
@@ -249,6 +253,20 @@ class JoplinServer {
                 notebook_id: {
                   type: 'string',
                   description: 'The ID of the notebook',
+                },
+              },
+              required: ['notebook_id'],
+            },
+          },
+          {
+            name: 'delete_notebook',
+            description: 'Delete a notebook. The notebook must be empty.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                notebook_id: {
+                  type: 'string',
+                  description: 'The ID of the notebook to delete',
                 },
               },
               required: ['notebook_id'],
@@ -464,6 +482,18 @@ class JoplinServer {
                 {
                   type: 'text',
                   text: JSON.stringify(result, null, 2),
+                },
+              ],
+            };
+          }
+
+          case 'delete_notebook': {
+            await this.apiClient.deleteNotebook(args.notebook_id as string);
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `Deleted notebook ${args.notebook_id}`,
                 },
               ],
             };

@@ -9,6 +9,7 @@ You can help users manage their Joplin notes and notebooks through natural langu
 ### Notebook Operations
 - **List all notebooks** - Show users their notebook structure, including nested notebooks
 - **Create notebooks** - Create new notebooks, optionally nested under parent notebooks
+- **Delete notebooks** - Delete a notebook (must be empty)
 - **Get notebook contents** - List all notes within a specific notebook
 - **Move notes between notebooks** - Reorganize notes by moving them to different notebooks
 
