@@ -7,7 +7,7 @@ A Gemini CLI extension for interacting with the Joplin note-taking application.
 1. **Joplin Desktop App** - Must be installed and running
 2. **Web Clipper Enabled** - In Joplin: `Settings/Options → Web Clipper` → Enable the service
 
-That's it! The extension automatically discovers your API token from Joplin's database.
+That's it! The extension automatically discovers your API token from Joplin's settings file.
 
 ## Installation
 
@@ -51,6 +51,7 @@ You can also set it in the extension config:
 
 - **List notebooks** - View all your notebooks with IDs and metadata
 - **Create notebooks** - Create new notebooks (with optional nesting)
+- **Delete notebooks** - Delete empty notebooks
 - **Get notebook notes** - List all notes in a specific notebook
 - **Move notes** - Move notes between notebooks
 
@@ -102,6 +103,7 @@ The extension provides these tools that Gemini can use:
 
 - `list_notebooks` - List all notebooks
 - `create_notebook` - Create a new notebook
+- `delete_notebook` - Delete a notebook (must be empty)
 - `get_notebook_notes` - Get all notes from a notebook
 - `move_note_to_notebook` - Move a note to a different notebook
 
@@ -119,19 +121,19 @@ The extension provides these tools that Gemini can use:
 
 ### "Could not find Joplin API token"
 
-The extension tries to automatically discover your token from Joplin's database. If this fails:
+The extension tries to automatically discover your token from Joplin's settings file. If this fails:
 
 **Check that:**
 
 1. Joplin desktop app is installed
-2. You've run Joplin at least once (to create the database)
+2. You've run Joplin at least once (to create the settings file)
 3. Web Clipper service is enabled in Settings → Web Clipper
 
-**Database locations:**
+**Settings file locations:**
 
-- Linux: `~/.config/joplin-desktop/database.sqlite`
-- macOS: `~/Library/Application Support/joplin-desktop/database.sqlite`
-- Windows: `%APPDATA%/joplin-desktop/database.sqlite`
+- Linux: `~/.config/joplin-desktop/settings.json`
+- macOS: `~/Library/Application Support/joplin-desktop/settings.json`
+- Windows: `%APPDATA%/joplin-desktop/settings.json`
 
 **Manual override:**
 If auto-discovery doesn't work, you can manually set the `JOPLIN_TOKEN` environment variable.
@@ -158,7 +160,7 @@ export JOPLIN_PORT="12345"  # Your custom port
 
 The extension:
 
-1. **Auto-discovers** your API token from Joplin's SQLite database (on first startup)
+1. **Auto-discovers** your API token from Joplin's settings file (on startup)
 2. **Caches** the token in memory for fast API calls
 3. **Uses** the Joplin Data API (REST interface) provided by the Web Clipper service
 
@@ -198,4 +200,4 @@ Apache-2.0
 
 ## Contributing
 
-Contributions are welcome! Please see [ROADMAP.md](ROADMAP.md) for planned features.
+Contributions are welcome!
