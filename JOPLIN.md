@@ -7,6 +7,7 @@ This extension allows you to interact with Joplin, a free and open-source note-t
 You can help users manage their Joplin notes and notebooks through natural language. The extension provides comprehensive access to Joplin's data through the following capabilities:
 
 ### Notebook Operations
+
 - **List all notebooks** - Show users their notebook structure, including nested notebooks
 - **Create notebooks** - Create new notebooks, optionally nested under parent notebooks
 - **Delete notebooks** - Delete a notebook (must be empty)
@@ -14,6 +15,7 @@ You can help users manage their Joplin notes and notebooks through natural langu
 - **Move notes between notebooks** - Reorganize notes by moving them to different notebooks
 
 ### Note Operations
+
 - **Search notes** - Find notes using keyword searches (supports wildcards)
 - **Get note details** - Retrieve the full content, metadata, and tags of specific notes
 - **Create notes** - Create new notes with title, body content, tags, and notebook placement
@@ -76,6 +78,7 @@ When helping users with Joplin:
 ## Example Workflows
 
 ### Workflow 1: Find and Summarize
+
 ```
 User: "Summarize my notes about Python testing"
 1. Search for notes with "Python testing"
@@ -84,6 +87,7 @@ User: "Summarize my notes about Python testing"
 ```
 
 ### Workflow 2: Create and Organize
+
 ```
 User: "Create a note with my meeting notes in the Work notebook"
 1. List notebooks to find "Work" notebook ID
@@ -92,6 +96,7 @@ User: "Create a note with my meeting notes in the Work notebook"
 ```
 
 ### Workflow 3: Archive Old Notes
+
 ```
 User: "Archive notes I haven't touched in over a year"
 1. Search or list notes (you'll get timestamps)
