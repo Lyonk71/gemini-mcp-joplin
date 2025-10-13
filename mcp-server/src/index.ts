@@ -151,7 +151,7 @@ export class JoplinApiClient {
 
   // Test connection
   async ping(): Promise<string> {
-    return this.request('GET', '/ping');
+    return this.request('GET', '/ping') as Promise<string>;
   }
 
   // Notebook (Folder) operations
