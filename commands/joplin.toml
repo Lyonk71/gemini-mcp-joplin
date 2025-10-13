@@ -6,3 +6,11 @@ User input: {{args}}
 
 Parse the user's input and call the appropriate Joplin tool.
 """
+
+[tools]
+delete_notebook = {
+  description = "Delete a notebook. The notebook must be empty.",
+  args = {
+    notebook_id = "The ID of the notebook to delete"
+  }
+}
