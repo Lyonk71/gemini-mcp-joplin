@@ -418,17 +418,13 @@ class JoplinServer {
           },
           {
             name: 'delete_note',
-            description: 'Delete a note. By default moves to trash; set permanent=true to delete permanently.',
+            description: 'Delete a note (moves it to the trash).',
             inputSchema: {
               type: 'object',
               properties: {
                 note_id: {
                   type: 'string',
                   description: 'The ID of the note to delete',
-                },
-                permanent: {
-                  type: 'boolean',
-                  description: 'Optional: If true, permanently delete the note (cannot be undone)',
                 },
               },
               required: ['note_id'],
@@ -610,14 +606,13 @@ class JoplinServer {
           case 'delete_note': {
             await this.apiClient.deleteNote(
               args.note_id as string,
-              args.permanent as boolean || false
+              false
             );
-            const action = args.permanent ? 'Permanently deleted' : 'Moved to trash';
             return {
               content: [
                 {
                   type: 'text',
-                  text: `${action}: note ${args.note_id}`,
+                  text: `Moved note to trash: ${args.note_id}`,
                 },
               ],
             };
