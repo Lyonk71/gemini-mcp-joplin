@@ -13,7 +13,7 @@ import { existsSync, readFileSync } from 'fs';
 /**
  * Auto-discover Joplin API token from settings.json
  */
-function discoverJoplinToken(): string | null {
+export function discoverJoplinToken(): string | null {
   try {
     // Determine settings path based on OS
     let settingsPath: string;
@@ -21,13 +21,28 @@ function discoverJoplinToken(): string | null {
 
     if (platform === 'darwin') {
       // macOS
-      settingsPath = join(homedir(), 'Library', 'Application Support', 'joplin-desktop', 'settings.json');
+      settingsPath = join(
+        homedir(),
+        'Library',
+        'Application Support',
+        'joplin-desktop',
+        'settings.json',
+      );
     } else if (platform === 'win32') {
       // Windows
-      settingsPath = join(process.env.APPDATA || '', 'joplin-desktop', 'settings.json');
+      settingsPath = join(
+        process.env.APPDATA || '',
+        'joplin-desktop',
+        'settings.json',
+      );
     } else {
       // Linux and others
-      settingsPath = join(homedir(), '.config', 'joplin-desktop', 'settings.json');
+      settingsPath = join(
+        homedir(),
+        '.config',
+        'joplin-desktop',
+        'settings.json',
+      );
     }
 
     // Check if settings file exists
@@ -42,7 +57,9 @@ function discoverJoplinToken(): string | null {
 
     if (!settings['api.token']) {
       console.error('[Info] API token not found in Joplin settings');
-      console.error('[Info] Make sure Web Clipper is enabled in Joplin settings');
+      console.error(
+        '[Info] Make sure Web Clipper is enabled in Joplin settings',
+      );
       return null;
     }
 
@@ -50,7 +67,10 @@ function discoverJoplinToken(): string | null {
     console.error('[Info] Successfully auto-discovered Joplin API token');
     return token;
   } catch (error) {
-    console.error('[Warning] Failed to auto-discover Joplin token:', error instanceof Error ? error.message : error);
+    console.error(
+      '[Warning] Failed to auto-discover Joplin token:',
+      error instanceof Error ? error.message : error,
+    );
     return null;
   }
 }
@@ -58,7 +78,7 @@ function discoverJoplinToken(): string | null {
 /**
  * HTTP client for Joplin Data API
  */
-class JoplinApiClient {
+export class JoplinApiClient {
   private baseUrl: string;
   private token: string;
 
@@ -70,7 +90,9 @@ class JoplinApiClient {
       if (!isNaN(parsedPort) && parsedPort > 0 && parsedPort <= 65535) {
         port = parsedPort.toString();
       } else {
-        console.error(`[Warning] Invalid JOPLIN_PORT: "${rawPort}". Falling back to default port 41184.`);
+        console.error(
+          `[Warning] Invalid JOPLIN_PORT: "${rawPort}". Falling back to default port 41184.`,
+        );
       }
     }
     this.baseUrl = `http://localhost:${port}`;
@@ -83,11 +105,17 @@ class JoplinApiClient {
       console.error('[Info] Please ensure:');
       console.error('  1. Joplin desktop app is installed');
       console.error('  2. Web Clipper is enabled in Settings → Web Clipper');
-      console.error('[Info] Alternatively, set JOPLIN_TOKEN environment variable');
+      console.error(
+        '[Info] Alternatively, set JOPLIN_TOKEN environment variable',
+      );
     }
   }
 
-  private async request(method: string, endpoint: string, body?: any): Promise<any> {
+  private async request(
+    method: string,
+    endpoint: string,
+    body?: Record<string, unknown>,
+  ): Promise<unknown> {
     const url = new URL(endpoint, this.baseUrl);
     url.searchParams.append('token', this.token);
 
@@ -127,71 +155,95 @@ class JoplinApiClient {
   }
 
   // Notebook (Folder) operations
-  async listNotebooks(): Promise<any> {
-    return this.request('GET', '/folders?fields=id,title,parent_id,created_time,updated_time,user_created_time,user_updated_time');
+  async listNotebooks(): Promise<unknown> {
+    return this.request(
+      'GET',
+      '/folders?fields=id,title,parent_id,created_time,updated_time,user_created_time,user_updated_time',
+    );
   }
 
-  async createNotebook(title: string, parentId?: string): Promise<any> {
-    const body: any = { title };
+  async createNotebook(title: string, parentId?: string): Promise<unknown> {
+    const body: Record<string, unknown> = { title };
     if (parentId) body.parent_id = parentId;
     return this.request('POST', '/folders', body);
   }
 
-  async getNotebookNotes(notebookId: string, fields?: string): Promise<any> {
-    const fieldsParam = fields || 'id,title,body,parent_id,created_time,updated_time,user_created_time,user_updated_time,is_todo,todo_completed';
-    return this.request('GET', `/folders/${notebookId}/notes?fields=${fieldsParam}`);
+  async getNotebookNotes(
+    notebookId: string,
+    fields?: string,
+  ): Promise<unknown> {
+    const fieldsParam =
+      fields ||
+      'id,title,body,parent_id,created_time,updated_time,user_created_time,user_updated_time,is_todo,todo_completed';
+    return this.request(
+      'GET',
+      `/folders/${notebookId}/notes?fields=${fieldsParam}`,
+    );
   }
 
-  async deleteNotebook(notebookId: string): Promise<any> {
+  async deleteNotebook(notebookId: string): Promise<unknown> {
     return this.request('DELETE', `/folders/${notebookId}`);
   }
 
   // Note operations
-  async searchNotes(query: string, type?: string): Promise<any> {
+  async searchNotes(query: string, type?: string): Promise<unknown> {
     let url = `/search?query=${encodeURIComponent(query)}`;
     if (type) url += `&type=${type}`;
     return this.request('GET', url);
   }
 
-  async getNote(noteId: string, fields?: string): Promise<any> {
-    const fieldsParam = fields || 'id,title,body,parent_id,created_time,updated_time,user_created_time,user_updated_time,is_todo,todo_completed,tags';
+  async getNote(noteId: string, fields?: string): Promise<unknown> {
+    const fieldsParam =
+      fields ||
+      'id,title,body,parent_id,created_time,updated_time,user_created_time,user_updated_time,is_todo,todo_completed,tags';
     return this.request('GET', `/notes/${noteId}?fields=${fieldsParam}`);
   }
 
-  async createNote(title: string, body: string, notebookId?: string, tags?: string): Promise<any> {
-    const noteData: any = { title, body };
+  async createNote(
+    title: string,
+    body: string,
+    notebookId?: string,
+    tags?: string,
+  ): Promise<unknown> {
+    const noteData: Record<string, unknown> = { title, body };
     if (notebookId) noteData.parent_id = notebookId;
     if (tags) noteData.tags = tags;
     return this.request('POST', '/notes', noteData);
   }
 
-  async updateNote(noteId: string, updates: any): Promise<any> {
+  async updateNote(
+    noteId: string,
+    updates: Record<string, unknown>,
+  ): Promise<unknown> {
     return this.request('PUT', `/notes/${noteId}`, updates);
   }
 
-  async appendToNote(noteId: string, content: string): Promise<any> {
-    const note = await this.getNote(noteId, 'id,body');
+  async appendToNote(noteId: string, content: string): Promise<unknown> {
+    const note = (await this.getNote(noteId, 'id,body')) as { body: string };
     const updatedBody = note.body + '\n\n' + content;
     return this.updateNote(noteId, { body: updatedBody });
   }
 
-  async prependToNote(noteId: string, content: string): Promise<any> {
-    const note = await this.getNote(noteId, 'id,body');
+  async prependToNote(noteId: string, content: string): Promise<unknown> {
+    const note = (await this.getNote(noteId, 'id,body')) as { body: string };
     const updatedBody = content + '\n\n' + note.body;
     return this.updateNote(noteId, { body: updatedBody });
   }
 
-  async deleteNote(noteId: string, permanent: boolean = false): Promise<any> {
+  async deleteNote(noteId: string, permanent = false): Promise<unknown> {
     const url = permanent ? `/notes/${noteId}?permanent=1` : `/notes/${noteId}`;
     return this.request('DELETE', url);
   }
 
-  async moveNoteToNotebook(noteId: string, notebookId: string): Promise<any> {
+  async moveNoteToNotebook(
+    noteId: string,
+    notebookId: string,
+  ): Promise<unknown> {
     return this.updateNote(noteId, { parent_id: notebookId });
   }
 }
 
-class JoplinServer {
+export class JoplinServer {
   private server: Server;
   private apiClient: JoplinApiClient;
 
@@ -220,7 +272,8 @@ class JoplinServer {
           // Notebook Management
           {
             name: 'list_notebooks',
-            description: 'List all notebooks (folders) in Joplin. Returns notebook ID, title, parent ID, and timestamps.',
+            description:
+              'List all notebooks (folders) in Joplin. Returns notebook ID, title, parent ID, and timestamps.',
             inputSchema: {
               type: 'object',
               properties: {},
@@ -228,7 +281,8 @@ class JoplinServer {
           },
           {
             name: 'create_notebook',
-            description: 'Create a new notebook in Joplin. Optionally nest it under a parent notebook.',
+            description:
+              'Create a new notebook in Joplin. Optionally nest it under a parent notebook.',
             inputSchema: {
               type: 'object',
               properties: {
@@ -238,7 +292,8 @@ class JoplinServer {
                 },
                 parent_id: {
                   type: 'string',
-                  description: 'Optional: ID of the parent notebook for nesting',
+                  description:
+                    'Optional: ID of the parent notebook for nesting',
                 },
               },
               required: ['title'],
@@ -246,7 +301,8 @@ class JoplinServer {
           },
           {
             name: 'get_notebook_notes',
-            description: 'Get all notes from a specific notebook. Returns note titles, IDs, and metadata.',
+            description:
+              'Get all notes from a specific notebook. Returns note titles, IDs, and metadata.',
             inputSchema: {
               type: 'object',
               properties: {
@@ -294,7 +350,8 @@ class JoplinServer {
           // Note Operations
           {
             name: 'search_notes',
-            description: 'Search for notes using keywords. Supports wildcards (*). Can optionally filter by type (note, folder, tag).',
+            description:
+              'Search for notes using keywords. Supports wildcards (*). Can optionally filter by type (note, folder, tag).',
             inputSchema: {
               type: 'object',
               properties: {
@@ -312,7 +369,8 @@ class JoplinServer {
           },
           {
             name: 'get_note',
-            description: 'Get the full content of a specific note by ID. Returns title, body (content), notebook, timestamps, and tags.',
+            description:
+              'Get the full content of a specific note by ID. Returns title, body (content), notebook, timestamps, and tags.',
             inputSchema: {
               type: 'object',
               properties: {
@@ -326,7 +384,8 @@ class JoplinServer {
           },
           {
             name: 'create_note',
-            description: 'Create a new note with title and body content. Optionally specify notebook and tags.',
+            description:
+              'Create a new note with title and body content. Optionally specify notebook and tags.',
             inputSchema: {
               type: 'object',
               properties: {
@@ -340,7 +399,8 @@ class JoplinServer {
                 },
                 notebook_id: {
                   type: 'string',
-                  description: 'Optional: ID of the notebook to place the note in (defaults to default notebook)',
+                  description:
+                    'Optional: ID of the notebook to place the note in (defaults to default notebook)',
                 },
                 tags: {
                   type: 'string',
@@ -352,7 +412,8 @@ class JoplinServer {
           },
           {
             name: 'update_note',
-            description: 'Update an existing note. Can update title, body, notebook, or tags.',
+            description:
+              'Update an existing note. Can update title, body, notebook, or tags.',
             inputSchema: {
               type: 'object',
               properties: {
@@ -366,7 +427,8 @@ class JoplinServer {
                 },
                 body: {
                   type: 'string',
-                  description: 'Optional: New body content (replaces existing content)',
+                  description:
+                    'Optional: New body content (replaces existing content)',
                 },
                 notebook_id: {
                   type: 'string',
@@ -400,7 +462,8 @@ class JoplinServer {
           },
           {
             name: 'prepend_to_note',
-            description: 'Prepend content to the beginning of an existing note.',
+            description:
+              'Prepend content to the beginning of an existing note.',
             inputSchema: {
               type: 'object',
               properties: {
@@ -457,10 +520,10 @@ class JoplinServer {
           }
 
           case 'create_notebook': {
-            const result = await this.apiClient.createNotebook(
+            const result = (await this.apiClient.createNotebook(
               args.title as string,
-              args.parent_id as string | undefined
-            );
+              args.parent_id as string | undefined,
+            )) as { title: string; id: string };
             return {
               content: [
                 {
@@ -472,7 +535,9 @@ class JoplinServer {
           }
 
           case 'get_notebook_notes': {
-            const result = await this.apiClient.getNotebookNotes(args.notebook_id as string);
+            const result = await this.apiClient.getNotebookNotes(
+              args.notebook_id as string,
+            );
             return {
               content: [
                 {
@@ -498,7 +563,7 @@ class JoplinServer {
           case 'move_note_to_notebook': {
             await this.apiClient.moveNoteToNotebook(
               args.note_id as string,
-              args.notebook_id as string
+              args.notebook_id as string,
             );
             return {
               content: [
@@ -514,7 +579,7 @@ class JoplinServer {
           case 'search_notes': {
             const result = await this.apiClient.searchNotes(
               args.query as string,
-              args.type as string | undefined
+              args.type as string | undefined,
             );
             return {
               content: [
@@ -539,12 +604,12 @@ class JoplinServer {
           }
 
           case 'create_note': {
-            const result = await this.apiClient.createNote(
+            const result = (await this.apiClient.createNote(
               args.title as string,
               args.body as string,
               args.notebook_id as string | undefined,
-              args.tags as string | undefined
-            );
+              args.tags as string | undefined,
+            )) as { title: string; id: string };
             return {
               content: [
                 {
@@ -556,13 +621,16 @@ class JoplinServer {
           }
 
           case 'update_note': {
-            const updates: any = {};
+            const updates: Record<string, unknown> = {};
             if (args.title) updates.title = args.title;
             if (args.body) updates.body = args.body;
             if (args.notebook_id) updates.parent_id = args.notebook_id;
             if (args.tags) updates.tags = args.tags;
 
-            const result = await this.apiClient.updateNote(args.note_id as string, updates);
+            const result = (await this.apiClient.updateNote(
+              args.note_id as string,
+              updates,
+            )) as { title: string; id: string };
             return {
               content: [
                 {
@@ -576,7 +644,7 @@ class JoplinServer {
           case 'append_to_note': {
             await this.apiClient.appendToNote(
               args.note_id as string,
-              args.content as string
+              args.content as string,
             );
             return {
               content: [
@@ -591,7 +659,7 @@ class JoplinServer {
           case 'prepend_to_note': {
             await this.apiClient.prependToNote(
               args.note_id as string,
-              args.content as string
+              args.content as string,
             );
             return {
               content: [
@@ -604,10 +672,7 @@ class JoplinServer {
           }
 
           case 'delete_note': {
-            await this.apiClient.deleteNote(
-              args.note_id as string,
-              false
-            );
+            await this.apiClient.deleteNote(args.note_id as string, false);
             return {
               content: [
                 {
@@ -622,7 +687,8 @@ class JoplinServer {
             throw new Error(`Unknown tool: ${name}`);
         }
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
         return {
           content: [
             {
@@ -656,17 +722,20 @@ class JoplinServer {
     try {
       await this.apiClient.ping();
       console.error('Successfully connected to Joplin');
-    } catch (error) {
+    } catch {
       console.error('[Warning] Could not connect to Joplin. Please ensure:');
       console.error('  1. The Joplin desktop application is running.');
-      console.error('  2. The Web Clipper service is enabled in Joplin (Settings → Web Clipper).');
-      console.error('If auto-discovery of the API token fails, you may also need to set the JOPLIN_TOKEN environment variable manually.');
+      console.error(
+        '  2. The Web Clipper service is enabled in Joplin (Settings → Web Clipper).',
+      );
+      console.error(
+        'If auto-discovery of the API token fails, you may also need to set the JOPLIN_TOKEN environment variable manually.',
+      );
     }
   }
 }
 
 const server = new JoplinServer();
-server.run().catch((error) => {
-  console.error('Failed to start server:', error);
+server.run().catch(() => {
   process.exit(1);
 });
