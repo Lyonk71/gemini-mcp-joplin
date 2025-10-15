@@ -60,9 +60,15 @@ You can also set it in the extension config:
 - **Search notes** - Find notes by keyword, with wildcard support
 - **Get note content** - Retrieve full note details including body, tags, and metadata
 - **Create notes** - Create new notes with title, body, notebook, and tags
-- **Update notes** - Modify note title, content, notebook, or tags
+- **Update notes** - Modify note title, content, or notebook
 - **Append/Prepend** - Add content to existing notes
 - **Delete notes** - Move notes to trash or permanently delete
+
+### Tag Management
+
+- **Add tags** - Add tags to existing notes (tags are created if they don't exist)
+- **Remove tags** - Remove specific tags from notes
+- **View tags** - Tags are included when retrieving note details
 
 ## Usage Examples
 
@@ -95,6 +101,30 @@ You can also explicitly invoke the Joplin extension:
 /joplin search for notes about kubernetes
 ```
 
+## Tag Handling
+
+Tags are managed explicitly in this extension:
+
+- **Creating notes with tags**: When you create a note with tags, they are automatically created if they don't exist
+- **Adding tags**: Use `add_tags_to_note` to add tags to existing notes - tags are added to any existing tags (not replaced)
+- **Removing tags**: Use `remove_tags_from_note` to remove specific tags - other tags remain untouched
+- **Viewing tags**: Use `get_note` to see all tags currently on a note
+
+Example workflows:
+```bash
+# Create note with tags
+"Create a note called 'Meeting Notes' with tags work and urgent"
+
+# Add additional tags later
+"Add the tags project-alpha and review to the Meeting Notes"
+
+# Remove specific tags
+"Remove the urgent tag from Meeting Notes"
+
+# View current tags
+"What tags does the Meeting Notes have?"
+```
+
 ## Available MCP Tools
 
 The extension provides these tools that Gemini can use:
@@ -111,11 +141,16 @@ The extension provides these tools that Gemini can use:
 
 - `search_notes` - Search notes by keyword
 - `get_note` - Get full note content by ID
-- `create_note` - Create a new note
-- `update_note` - Update note properties
+- `create_note` - Create a new note (supports tags)
+- `update_note` - Update note title, body, or notebook
 - `append_to_note` - Append content to a note
 - `prepend_to_note` - Prepend content to a note
 - `delete_note` - Delete or trash a note
+
+### Tags
+
+- `add_tags_to_note` - Add tags to an existing note
+- `remove_tags_from_note` - Remove specific tags from a note
 
 ## Troubleshooting
 

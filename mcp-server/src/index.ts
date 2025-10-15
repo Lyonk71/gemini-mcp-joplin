@@ -213,8 +213,18 @@ export class JoplinApiClient {
   ): Promise<unknown> {
     const noteData: Record<string, unknown> = { title, body };
     if (notebookId) noteData.parent_id = notebookId;
-    if (tags) noteData.tags = tags;
-    return this.request('POST', '/notes', noteData);
+
+    // Create note first (API doesn't accept tags parameter)
+    const note = (await this.request('POST', '/notes', noteData)) as {
+      id: string;
+    };
+
+    // Then add tags if provided
+    if (tags) {
+      await this.addTagsToNote(note.id, tags);
+    }
+
+    return note;
   }
 
   async updateNote(
@@ -246,6 +256,83 @@ export class JoplinApiClient {
     notebookId: string,
   ): Promise<unknown> {
     return this.updateNote(noteId, { parent_id: notebookId });
+  }
+
+  // Tag operations
+
+  /**
+   * Find an existing tag by name or create it if it doesn't exist
+   * @returns Tag ID
+   */
+  private async findOrCreateTag(tagName: string): Promise<string> {
+    // Search for existing tag by exact name
+    const searchResult = (await this.searchNotes(tagName, 'tag')) as {
+      items: Array<{ id: string; title: string }>;
+    };
+    const items = searchResult.items || [];
+    const exactMatch = items.find(
+      (t) => t.title.toLowerCase() === tagName.toLowerCase(),
+    );
+
+    if (exactMatch) {
+      return exactMatch.id;
+    }
+
+    // Create new tag if not found
+    const newTag = (await this.request('POST', '/tags', {
+      title: tagName,
+    })) as { id: string };
+    return newTag.id;
+  }
+
+  /**
+   * Add tags to a note (comma-separated tag names)
+   * Tags will be created if they don't exist
+   */
+  async addTagsToNote(noteId: string, tagNames: string): Promise<void> {
+    // Parse comma-separated tags
+    const tags = tagNames
+      .split(',')
+      .map((t) => t.trim())
+      .filter((t) => t);
+
+    // Get or create each tag, then associate with note
+    for (const tagName of tags) {
+      const tagId = await this.findOrCreateTag(tagName);
+      await this.request('POST', `/tags/${tagId}/notes`, { id: noteId });
+    }
+  }
+
+  /**
+   * Remove tags from a note (comma-separated tag names)
+   * Silently ignores tags that don't exist or aren't on the note
+   */
+  async removeTagsFromNote(noteId: string, tagNames: string): Promise<void> {
+    // Parse comma-separated tags
+    const tags = tagNames
+      .split(',')
+      .map((t) => t.trim())
+      .filter((t) => t);
+
+    // For each tag name, find it and remove from note
+    for (const tagName of tags) {
+      const searchResult = (await this.searchNotes(tagName, 'tag')) as {
+        items: Array<{ id: string; title: string }>;
+      };
+      const items = searchResult.items || [];
+      const exactMatch = items.find(
+        (t) => t.title.toLowerCase() === tagName.toLowerCase(),
+      );
+
+      if (exactMatch) {
+        // Remove tag from note (ignore errors if tag isn't on note)
+        try {
+          await this.request('DELETE', `/tags/${exactMatch.id}/notes/${noteId}`);
+        } catch {
+          // Tag wasn't on note, that's fine
+        }
+      }
+    }
   }
 }
 
@@ -419,7 +506,7 @@ export class JoplinServer {
           {
             name: 'update_note',
             description:
-              'Update an existing note. Can update title, body, notebook, or tags.',
+              'Update an existing note. Can update title, body, or notebook. Use add_tags_to_note or remove_tags_from_note to modify tags.',
             inputSchema: {
               type: 'object',
               properties: {
@@ -439,10 +526,6 @@ export class JoplinServer {
                 notebook_id: {
                   type: 'string',
                   description: 'Optional: Move note to a different notebook',
-                },
-                tags: {
-                  type: 'string',
-                  description: 'Optional: Comma-separated list of tag names',
                 },
               },
               required: ['note_id'],
@@ -497,6 +580,46 @@ export class JoplinServer {
                 },
               },
               required: ['note_id'],
+            },
+          },
+
+          // Tag Management
+          {
+            name: 'add_tags_to_note',
+            description:
+              'Add tags to an existing note. Tags will be created if they don\'t exist. Tags are added to any existing tags (not replaced).',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                note_id: {
+                  type: 'string',
+                  description: 'The ID of the note',
+                },
+                tags: {
+                  type: 'string',
+                  description: 'Comma-separated list of tag names to add',
+                },
+              },
+              required: ['note_id', 'tags'],
+            },
+          },
+          {
+            name: 'remove_tags_from_note',
+            description:
+              'Remove specific tags from a note. Silently ignores tags that don\'t exist or aren\'t on the note.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                note_id: {
+                  type: 'string',
+                  description: 'The ID of the note',
+                },
+                tags: {
+                  type: 'string',
+                  description: 'Comma-separated list of tag names to remove',
+                },
+              },
+              required: ['note_id', 'tags'],
             },
           },
         ],
@@ -631,7 +754,6 @@ export class JoplinServer {
             if (args.title) updates.title = args.title;
             if (args.body) updates.body = args.body;
             if (args.notebook_id) updates.parent_id = args.notebook_id;
-            if (args.tags) updates.tags = args.tags;
 
             const result = (await this.apiClient.updateNote(
               args.note_id as string,
@@ -684,6 +806,37 @@ export class JoplinServer {
                 {
                   type: 'text',
                   text: `Moved note to trash: ${args.note_id}`,
+                },
+              ],
+            };
+          }
+
+          // Tag Management
+          case 'add_tags_to_note': {
+            await this.apiClient.addTagsToNote(
+              args.note_id as string,
+              args.tags as string,
+            );
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `Added tags to note ${args.note_id}: ${args.tags}`,
+                },
+              ],
+            };
+          }
+
+          case 'remove_tags_from_note': {
+            await this.apiClient.removeTagsFromNote(
+              args.note_id as string,
+              args.tags as string,
+            );
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `Removed tags from note ${args.note_id}: ${args.tags}`,
                 },
               ],
             };
