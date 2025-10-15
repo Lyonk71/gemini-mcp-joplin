@@ -195,8 +195,14 @@ export class JoplinApiClient {
   async getNote(noteId: string, fields?: string): Promise<unknown> {
     const fieldsParam =
       fields ||
-      'id,title,body,parent_id,created_time,updated_time,user_created_time,user_updated_time,is_todo,todo_completed,tags';
-    return this.request('GET', `/notes/${noteId}?fields=${fieldsParam}`);
+      'id,title,body,parent_id,created_time,updated_time,user_created_time,user_updated_time,is_todo,todo_completed';
+    const [note, tags] = await Promise.all([
+      this.request('GET', `/notes/${noteId}?fields=${fieldsParam}`),
+      this.request('GET', `/notes/${noteId}/tags`), // Fetch tags separately
+    ]);
+
+    // Combine the results
+    return { ...(note as Record<string, unknown>), tags };
   }
 
   async createNote(

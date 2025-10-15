@@ -487,6 +487,10 @@ describe('JoplinApiClient', () => {
             JSON.stringify({ id: '123', body: 'Original content' }),
           ),
       };
+      const getTagsResponse = {
+        ok: true,
+        text: vi.fn().mockResolvedValue(JSON.stringify({ items: [] })),
+      };
       const updateNoteResponse = {
         ok: true,
         text: vi
@@ -498,15 +502,16 @@ describe('JoplinApiClient', () => {
 
       vi.mocked(global.fetch)
         .mockResolvedValueOnce(getNoteResponse as unknown as Response)
+        .mockResolvedValueOnce(getTagsResponse as unknown as Response)
         .mockResolvedValueOnce(updateNoteResponse as unknown as Response);
 
       const client = new JoplinApiClient();
       await client.appendToNote('123', 'New content');
 
-      expect(global.fetch).toHaveBeenCalledTimes(2);
-      // Second call should be PUT with combined content
+      expect(global.fetch).toHaveBeenCalledTimes(3);
+      // Third call should be PUT with combined content
       expect(global.fetch).toHaveBeenNthCalledWith(
-        2,
+        3,
         expect.any(String),
         expect.objectContaining({
           method: 'PUT',
@@ -524,6 +529,10 @@ describe('JoplinApiClient', () => {
             JSON.stringify({ id: '123', body: 'Original content' }),
           ),
       };
+      const getTagsResponse = {
+        ok: true,
+        text: vi.fn().mockResolvedValue(JSON.stringify({ items: [] })),
+      };
       const updateNoteResponse = {
         ok: true,
         text: vi
@@ -535,15 +544,16 @@ describe('JoplinApiClient', () => {
 
       vi.mocked(global.fetch)
         .mockResolvedValueOnce(getNoteResponse as unknown as Response)
+        .mockResolvedValueOnce(getTagsResponse as unknown as Response)
         .mockResolvedValueOnce(updateNoteResponse as unknown as Response);
 
       const client = new JoplinApiClient();
       await client.prependToNote('123', 'New content');
 
-      expect(global.fetch).toHaveBeenCalledTimes(2);
-      // Second call should be PUT with combined content
+      expect(global.fetch).toHaveBeenCalledTimes(3);
+      // Third call should be PUT with combined content
       expect(global.fetch).toHaveBeenNthCalledWith(
-        2,
+        3,
         expect.any(String),
         expect.objectContaining({
           method: 'PUT',
