@@ -382,6 +382,13 @@ export class JoplinApiClient {
       }
     }
   }
+
+  /**
+   * List all tags in Joplin
+   */
+  async listTags(): Promise<unknown> {
+    return this.paginatedRequest('/tags?fields=id,title,created_time,updated_time');
+  }
 }
 
 export class JoplinServer {
@@ -670,6 +677,14 @@ export class JoplinServer {
               required: ['note_id', 'tags'],
             },
           },
+          {
+            name: 'list_tags',
+            description: 'List all tags in Joplin. Returns tag IDs, names, and timestamps.',
+            inputSchema: {
+              type: 'object',
+              properties: {},
+            },
+          },
         ],
       };
     });
@@ -885,6 +900,18 @@ export class JoplinServer {
                 {
                   type: 'text',
                   text: `Removed tags from note ${args.note_id}: ${args.tags}`,
+                },
+              ],
+            };
+          }
+
+          case 'list_tags': {
+            const result = await this.apiClient.listTags();
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(result, null, 2),
                 },
               ],
             };
