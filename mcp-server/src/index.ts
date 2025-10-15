@@ -11,6 +11,14 @@ import { join } from 'path';
 import { existsSync, readFileSync } from 'fs';
 
 /**
+ * Joplin API paginated response format
+ */
+interface PaginatedResponse<T> {
+  items: T[];
+  has_more: boolean;
+}
+
+/**
  * Auto-discover Joplin API token from settings.json
  */
 export function discoverJoplinToken(): string | null {
@@ -149,6 +157,47 @@ export class JoplinApiClient {
     }
   }
 
+  /**
+   * Helper method to handle paginated API requests
+   * Automatically fetches all pages and aggregates results
+   */
+  private async paginatedRequest<T>(
+    endpoint: string,
+    limit = 100,
+  ): Promise<T[]> {
+    const allItems: T[] = [];
+    let page = 1;
+    let hasMore = true;
+
+    while (hasMore) {
+      // Add pagination parameters to endpoint
+      const separator = endpoint.includes('?') ? '&' : '?';
+      const paginatedEndpoint = `${endpoint}${separator}limit=${limit}&page=${page}`;
+
+      const response = (await this.request(
+        'GET',
+        paginatedEndpoint,
+      )) as PaginatedResponse<T>;
+
+      if (!response) {
+        throw new Error(
+          `Unexpected empty response from paginated endpoint: ${paginatedEndpoint}`,
+        );
+      }
+
+      // Aggregate items from this page
+      if (response.items && Array.isArray(response.items)) {
+        allItems.push(...response.items);
+      }
+
+      // Check if there are more pages
+      hasMore = response.has_more === true;
+      page++;
+    }
+
+    return allItems;
+  }
+
   // Test connection
   async ping(): Promise<string> {
     return this.request('GET', '/ping') as Promise<string>;
@@ -156,8 +205,7 @@ export class JoplinApiClient {
 
   // Notebook (Folder) operations
   async listNotebooks(): Promise<unknown> {
-    return this.request(
-      'GET',
+    return this.paginatedRequest(
       '/folders?fields=id,title,parent_id,created_time,updated_time,user_created_time,user_updated_time',
     );
   }
@@ -175,8 +223,7 @@ export class JoplinApiClient {
     const fieldsParam =
       fields ||
       'id,title,body,parent_id,created_time,updated_time,user_created_time,user_updated_time,is_todo,todo_completed';
-    return this.request(
-      'GET',
+    return this.paginatedRequest(
       `/folders/${notebookId}/notes?fields=${fieldsParam}`,
     );
   }
@@ -189,7 +236,7 @@ export class JoplinApiClient {
   async searchNotes(query: string, type?: string): Promise<unknown> {
     let url = `/search?query=${encodeURIComponent(query)}`;
     if (type) url += `&type=${type}`;
-    return this.request('GET', url);
+    return this.paginatedRequest(url);
   }
 
   async getNote(noteId: string, fields?: string): Promise<unknown> {
@@ -198,7 +245,7 @@ export class JoplinApiClient {
       'id,title,body,parent_id,created_time,updated_time,user_created_time,user_updated_time,is_todo,todo_completed';
     const [note, tags] = await Promise.all([
       this.request('GET', `/notes/${noteId}?fields=${fieldsParam}`),
-      this.request('GET', `/notes/${noteId}/tags`), // Fetch tags separately
+      this.paginatedRequest(`/notes/${noteId}/tags`), // Fetch tags with pagination
     ]);
 
     // Combine the results
@@ -265,11 +312,11 @@ export class JoplinApiClient {
    * @returns Tag ID
    */
   private async findOrCreateTag(tagName: string): Promise<string> {
-    // Search for existing tag by exact name
-    const searchResult = (await this.searchNotes(tagName, 'tag')) as {
-      items: Array<{ id: string; title: string }>;
-    };
-    const items = searchResult.items || [];
+    // Search for existing tag by exact name (searchNotes now returns items array directly)
+    const items = (await this.searchNotes(tagName, 'tag')) as Array<{
+      id: string;
+      title: string;
+    }>;
     const exactMatch = items.find(
       (t) => t.title.toLowerCase() === tagName.toLowerCase(),
     );
@@ -316,10 +363,11 @@ export class JoplinApiClient {
 
     // For each tag name, find it and remove from note
     for (const tagName of tags) {
-      const searchResult = (await this.searchNotes(tagName, 'tag')) as {
-        items: Array<{ id: string; title: string }>;
-      };
-      const items = searchResult.items || [];
+      // searchNotes now returns items array directly
+      const items = (await this.searchNotes(tagName, 'tag')) as Array<{
+        id: string;
+        title: string;
+      }>;
       const exactMatch = items.find(
         (t) => t.title.toLowerCase() === tagName.toLowerCase(),
       );

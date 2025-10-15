@@ -429,7 +429,9 @@ describe('JoplinApiClient', () => {
     it('should properly encode query parameters in search', async () => {
       const mockResponse = {
         ok: true,
-        text: vi.fn().mockResolvedValue(JSON.stringify({ items: [] })),
+        text: vi
+          .fn()
+          .mockResolvedValue(JSON.stringify({ items: [], has_more: false })),
       };
       vi.mocked(global.fetch).mockResolvedValue(
         mockResponse as unknown as Response,
@@ -489,7 +491,9 @@ describe('JoplinApiClient', () => {
       };
       const getTagsResponse = {
         ok: true,
-        text: vi.fn().mockResolvedValue(JSON.stringify({ items: [] })),
+        text: vi
+          .fn()
+          .mockResolvedValue(JSON.stringify({ items: [], has_more: false })),
       };
       const updateNoteResponse = {
         ok: true,
@@ -531,7 +535,9 @@ describe('JoplinApiClient', () => {
       };
       const getTagsResponse = {
         ok: true,
-        text: vi.fn().mockResolvedValue(JSON.stringify({ items: [] })),
+        text: vi
+          .fn()
+          .mockResolvedValue(JSON.stringify({ items: [], has_more: false })),
       };
       const updateNoteResponse = {
         ok: true,
@@ -599,7 +605,9 @@ describe('JoplinApiClient', () => {
       // Mock tag search (tag doesn't exist)
       const tagSearchResponse = {
         ok: true,
-        text: vi.fn().mockResolvedValue(JSON.stringify({ items: [] })),
+        text: vi
+          .fn()
+          .mockResolvedValue(JSON.stringify({ items: [], has_more: false })),
       };
       // Mock tag creation
       const tagCreateResponse = {
@@ -663,7 +671,9 @@ describe('JoplinApiClient', () => {
       // Mock tag search (tag doesn't exist)
       const tagSearchResponse = {
         ok: true,
-        text: vi.fn().mockResolvedValue(JSON.stringify({ items: [] })),
+        text: vi
+          .fn()
+          .mockResolvedValue(JSON.stringify({ items: [], has_more: false })),
       };
       // Mock tag creation
       const tagCreateResponse = {
@@ -694,7 +704,10 @@ describe('JoplinApiClient', () => {
         text: vi
           .fn()
           .mockResolvedValue(
-            JSON.stringify({ items: [{ id: 'tag-draft', title: 'draft' }] }),
+            JSON.stringify({
+              items: [{ id: 'tag-draft', title: 'draft' }],
+              has_more: false,
+            }),
           ),
       };
       // Mock tag removal
@@ -725,7 +738,9 @@ describe('JoplinApiClient', () => {
         // Search for 'work' tag
         {
           ok: true,
-          text: vi.fn().mockResolvedValue(JSON.stringify({ items: [] })),
+          text: vi
+            .fn()
+            .mockResolvedValue(JSON.stringify({ items: [], has_more: false })),
         },
         // Create 'work' tag
         {
@@ -737,7 +752,9 @@ describe('JoplinApiClient', () => {
         // Search for 'urgent' tag
         {
           ok: true,
-          text: vi.fn().mockResolvedValue(JSON.stringify({ items: [] })),
+          text: vi
+            .fn()
+            .mockResolvedValue(JSON.stringify({ items: [], has_more: false })),
         },
         // Create 'urgent' tag
         {
@@ -769,7 +786,10 @@ describe('JoplinApiClient', () => {
         text: vi
           .fn()
           .mockResolvedValue(
-            JSON.stringify({ items: [{ id: 'tag-existing', title: 'work' }] }),
+            JSON.stringify({
+              items: [{ id: 'tag-existing', title: 'work' }],
+              has_more: false,
+            }),
           ),
       };
       // Mock tag association
@@ -794,6 +814,275 @@ describe('JoplinApiClient', () => {
           body: expect.stringContaining('"title":"work"'),
         }),
       );
+    });
+  });
+
+  describe('Pagination', () => {
+    beforeEach(() => {
+      process.env.JOPLIN_TOKEN = 'test-token';
+      delete process.env.JOPLIN_PORT;
+      global.fetch = vi.fn();
+    });
+
+    it('should handle single page response', async () => {
+      const mockResponse = {
+        ok: true,
+        text: vi.fn().mockResolvedValue(
+          JSON.stringify({
+            items: [
+              { id: '1', title: 'Note 1' },
+              { id: '2', title: 'Note 2' },
+            ],
+            has_more: false,
+          }),
+        ),
+      };
+
+      vi.mocked(global.fetch).mockResolvedValue(
+        mockResponse as unknown as Response,
+      );
+
+      const client = new JoplinApiClient();
+      const result = await client.searchNotes('test');
+
+      expect(result).toEqual([
+        { id: '1', title: 'Note 1' },
+        { id: '2', title: 'Note 2' },
+      ]);
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('limit=100&page=1'),
+        expect.any(Object),
+      );
+    });
+
+    it('should handle multiple pages', async () => {
+      const page1Response = {
+        ok: true,
+        text: vi.fn().mockResolvedValue(
+          JSON.stringify({
+            items: [
+              { id: '1', title: 'Note 1' },
+              { id: '2', title: 'Note 2' },
+            ],
+            has_more: true,
+          }),
+        ),
+      };
+
+      const page2Response = {
+        ok: true,
+        text: vi.fn().mockResolvedValue(
+          JSON.stringify({
+            items: [
+              { id: '3', title: 'Note 3' },
+              { id: '4', title: 'Note 4' },
+            ],
+            has_more: true,
+          }),
+        ),
+      };
+
+      const page3Response = {
+        ok: true,
+        text: vi.fn().mockResolvedValue(
+          JSON.stringify({
+            items: [{ id: '5', title: 'Note 5' }],
+            has_more: false,
+          }),
+        ),
+      };
+
+      vi.mocked(global.fetch)
+        .mockResolvedValueOnce(page1Response as unknown as Response)
+        .mockResolvedValueOnce(page2Response as unknown as Response)
+        .mockResolvedValueOnce(page3Response as unknown as Response);
+
+      const client = new JoplinApiClient();
+      const result = await client.searchNotes('test');
+
+      expect(result).toEqual([
+        { id: '1', title: 'Note 1' },
+        { id: '2', title: 'Note 2' },
+        { id: '3', title: 'Note 3' },
+        { id: '4', title: 'Note 4' },
+        { id: '5', title: 'Note 5' },
+      ]);
+      expect(global.fetch).toHaveBeenCalledTimes(3);
+      expect(global.fetch).toHaveBeenNthCalledWith(
+        1,
+        expect.stringContaining('page=1'),
+        expect.any(Object),
+      );
+      expect(global.fetch).toHaveBeenNthCalledWith(
+        2,
+        expect.stringContaining('page=2'),
+        expect.any(Object),
+      );
+      expect(global.fetch).toHaveBeenNthCalledWith(
+        3,
+        expect.stringContaining('page=3'),
+        expect.any(Object),
+      );
+    });
+
+    it('should handle empty results', async () => {
+      const mockResponse = {
+        ok: true,
+        text: vi.fn().mockResolvedValue(
+          JSON.stringify({
+            items: [],
+            has_more: false,
+          }),
+        ),
+      };
+
+      vi.mocked(global.fetch).mockResolvedValue(
+        mockResponse as unknown as Response,
+      );
+
+      const client = new JoplinApiClient();
+      const result = await client.searchNotes('nonexistent');
+
+      expect(result).toEqual([]);
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('should paginate listNotebooks', async () => {
+      const mockResponse = {
+        ok: true,
+        text: vi.fn().mockResolvedValue(
+          JSON.stringify({
+            items: [
+              { id: 'folder-1', title: 'Folder 1' },
+              { id: 'folder-2', title: 'Folder 2' },
+            ],
+            has_more: false,
+          }),
+        ),
+      };
+
+      vi.mocked(global.fetch).mockResolvedValue(
+        mockResponse as unknown as Response,
+      );
+
+      const client = new JoplinApiClient();
+      const result = await client.listNotebooks();
+
+      expect(result).toEqual([
+        { id: 'folder-1', title: 'Folder 1' },
+        { id: 'folder-2', title: 'Folder 2' },
+      ]);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/folders'),
+        expect.any(Object),
+      );
+    });
+
+    it('should paginate getNotebookNotes', async () => {
+      const mockResponse = {
+        ok: true,
+        text: vi.fn().mockResolvedValue(
+          JSON.stringify({
+            items: [
+              { id: 'note-1', title: 'Note 1' },
+              { id: 'note-2', title: 'Note 2' },
+            ],
+            has_more: false,
+          }),
+        ),
+      };
+
+      vi.mocked(global.fetch).mockResolvedValue(
+        mockResponse as unknown as Response,
+      );
+
+      const client = new JoplinApiClient();
+      const result = await client.getNotebookNotes('folder-123');
+
+      expect(result).toEqual([
+        { id: 'note-1', title: 'Note 1' },
+        { id: 'note-2', title: 'Note 2' },
+      ]);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/folders/folder-123/notes'),
+        expect.any(Object),
+      );
+    });
+
+    it('should paginate tags in getNote', async () => {
+      const noteResponse = {
+        ok: true,
+        text: vi
+          .fn()
+          .mockResolvedValue(
+            JSON.stringify({ id: '123', title: 'Test Note', body: 'Content' }),
+          ),
+      };
+      const tagsResponse = {
+        ok: true,
+        text: vi.fn().mockResolvedValue(
+          JSON.stringify({
+            items: [
+              { id: 'tag-1', title: 'work' },
+              { id: 'tag-2', title: 'urgent' },
+            ],
+            has_more: false,
+          }),
+        ),
+      };
+
+      vi.mocked(global.fetch)
+        .mockResolvedValueOnce(noteResponse as unknown as Response)
+        .mockResolvedValueOnce(tagsResponse as unknown as Response);
+
+      const client = new JoplinApiClient();
+      const result = (await client.getNote('123')) as {
+        tags: Array<{ id: string; title: string }>;
+      };
+
+      expect(result.tags).toEqual([
+        { id: 'tag-1', title: 'work' },
+        { id: 'tag-2', title: 'urgent' },
+      ]);
+    });
+
+    it('should handle tag search with pagination in findOrCreateTag', async () => {
+      const noteResponse = {
+        ok: true,
+        text: vi
+          .fn()
+          .mockResolvedValue(JSON.stringify({ id: '123', title: 'Test Note' })),
+      };
+      const tagSearchResponse = {
+        ok: true,
+        text: vi.fn().mockResolvedValue(
+          JSON.stringify({
+            items: [],
+            has_more: false,
+          }),
+        ),
+      };
+      const tagCreateResponse = {
+        ok: true,
+        text: vi.fn().mockResolvedValue(JSON.stringify({ id: 'tag-new' })),
+      };
+      const tagAssociateResponse = {
+        ok: true,
+        text: vi.fn().mockResolvedValue(''),
+      };
+
+      vi.mocked(global.fetch)
+        .mockResolvedValueOnce(noteResponse as unknown as Response)
+        .mockResolvedValueOnce(tagSearchResponse as unknown as Response)
+        .mockResolvedValueOnce(tagCreateResponse as unknown as Response)
+        .mockResolvedValueOnce(tagAssociateResponse as unknown as Response);
+
+      const client = new JoplinApiClient();
+      await client.createNote('Test Note', 'Body', undefined, 'newtag');
+
+      // Should search for tag, not find it, create it, and associate it
+      expect(global.fetch).toHaveBeenCalledTimes(4);
     });
   });
 });
