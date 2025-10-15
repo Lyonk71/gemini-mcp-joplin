@@ -485,6 +485,39 @@ export class JoplinApiClient {
 
     return this.paginatedRequest(`/resources?fields=${fieldsParam}`);
   }
+
+  /**
+   * Get metadata for a specific resource
+   */
+  async getResourceMetadata(resourceId: string, fields?: string): Promise<unknown> {
+    const fieldsParam =
+      fields ||
+      'id,title,mime,filename,size,file_extension,created_time,updated_time,blob_updated_time,is_shared,share_id,ocr_text,ocr_status';
+
+    return this.request('GET', `/resources/${resourceId}?fields=${fieldsParam}`);
+  }
+
+  /**
+   * Get all resources (attachments) for a specific note
+   */
+  async getNoteResources(noteId: string, fields?: string): Promise<unknown> {
+    const fieldsParam =
+      fields ||
+      'id,title,mime,filename,size,file_extension,created_time,updated_time';
+
+    return this.paginatedRequest(`/notes/${noteId}/resources?fields=${fieldsParam}`);
+  }
+
+  /**
+   * Get all notes that use a specific resource (reverse lookup)
+   */
+  async getResourceNotes(resourceId: string, fields?: string): Promise<unknown> {
+    const fieldsParam =
+      fields ||
+      'id,title,parent_id,created_time,updated_time';
+
+    return this.paginatedRequest(`/resources/${resourceId}/notes?fields=${fieldsParam}`);
+  }
 }
 
 export class JoplinServer {
@@ -865,6 +898,48 @@ export class JoplinServer {
               properties: {},
             },
           },
+          {
+            name: 'get_resource_metadata',
+            description: 'Get metadata for a specific resource/attachment including size, MIME type, OCR text, and timestamps.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                resource_id: {
+                  type: 'string',
+                  description: 'The ID of the resource',
+                },
+              },
+              required: ['resource_id'],
+            },
+          },
+          {
+            name: 'get_note_attachments',
+            description: 'List all file attachments in a specific note.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                note_id: {
+                  type: 'string',
+                  description: 'The ID of the note',
+                },
+              },
+              required: ['note_id'],
+            },
+          },
+          {
+            name: 'get_resource_notes',
+            description: 'Find all notes that reference/use a specific resource/attachment. Essential before deleting a resource.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                resource_id: {
+                  type: 'string',
+                  description: 'The ID of the resource',
+                },
+              },
+              required: ['resource_id'],
+            },
+          },
         ],
       };
     });
@@ -1181,6 +1256,42 @@ export class JoplinServer {
           // Resource Operations
           case 'list_all_resources': {
             const result = await this.apiClient.listAllResources();
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(result, null, 2),
+                },
+              ],
+            };
+          }
+
+          case 'get_resource_metadata': {
+            const result = await this.apiClient.getResourceMetadata(args.resource_id as string);
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(result, null, 2),
+                },
+              ],
+            };
+          }
+
+          case 'get_note_attachments': {
+            const result = await this.apiClient.getNoteResources(args.note_id as string);
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(result, null, 2),
+                },
+              ],
+            };
+          }
+
+          case 'get_resource_notes': {
+            const result = await this.apiClient.getResourceNotes(args.resource_id as string);
             return {
               content: [
                 {
