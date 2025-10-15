@@ -518,6 +518,38 @@ export class JoplinApiClient {
 
     return this.paginatedRequest(`/resources/${resourceId}/notes?fields=${fieldsParam}`);
   }
+
+  /**
+   * Download a resource file
+   */
+  async downloadResource(resourceId: string): Promise<Buffer> {
+    const url = new URL(`/resources/${resourceId}/file`, this.baseUrl);
+    url.searchParams.append('token', this.token);
+
+    const response = await fetch(url.toString());
+
+    if (!response.ok) {
+      throw new Error(`Failed to download resource: ${response.statusText}`);
+    }
+
+    return Buffer.from(await response.arrayBuffer());
+  }
+
+  /**
+   * Download a resource to a file
+   */
+  async downloadResourceToFile(resourceId: string, outputPath: string): Promise<void> {
+    const fs = await import('fs');
+    const buffer = await this.downloadResource(resourceId);
+    fs.writeFileSync(outputPath, buffer);
+  }
+
+  /**
+   * Delete a resource
+   */
+  async deleteResource(resourceId: string): Promise<void> {
+    await this.request('DELETE', `/resources/${resourceId}`);
+  }
 }
 
 export class JoplinServer {
@@ -940,6 +972,38 @@ export class JoplinServer {
               required: ['resource_id'],
             },
           },
+          {
+            name: 'download_attachment',
+            description: 'Download a file attachment from Joplin by resource ID. Saves to specified path.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                resource_id: {
+                  type: 'string',
+                  description: 'The ID of the resource to download',
+                },
+                output_path: {
+                  type: 'string',
+                  description: 'Local file path to save the downloaded file',
+                },
+              },
+              required: ['resource_id', 'output_path'],
+            },
+          },
+          {
+            name: 'delete_resource',
+            description: 'Delete a resource/attachment from Joplin. WARNING: This will break references in notes that use this resource. Use get_resource_notes first to check usage.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                resource_id: {
+                  type: 'string',
+                  description: 'The ID of the resource to delete',
+                },
+              },
+              required: ['resource_id'],
+            },
+          },
         ],
       };
     });
@@ -1297,6 +1361,50 @@ export class JoplinServer {
                 {
                   type: 'text',
                   text: JSON.stringify(result, null, 2),
+                },
+              ],
+            };
+          }
+
+          case 'download_attachment': {
+            await this.apiClient.downloadResourceToFile(
+              args.resource_id as string,
+              args.output_path as string,
+            );
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `Downloaded resource to: ${args.output_path}`,
+                },
+              ],
+            };
+          }
+
+          case 'delete_resource': {
+            // Optional: Check for note references first
+            const notes = await this.apiClient.getResourceNotes(args.resource_id as string) as { items: unknown[] } | unknown[];
+
+            const items = Array.isArray(notes) ? notes : (notes as { items: unknown[] }).items;
+
+            if (items && items.length > 0) {
+              return {
+                content: [
+                  {
+                    type: 'text',
+                    text: `Warning: This resource is used in ${items.length} note(s). Deleting it will break those references.\n\n${JSON.stringify(notes, null, 2)}`,
+                  },
+                ],
+              };
+            }
+
+            await this.apiClient.deleteResource(args.resource_id as string);
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `Deleted resource: ${args.resource_id}`,
                 },
               ],
             };
