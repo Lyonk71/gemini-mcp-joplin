@@ -417,6 +417,38 @@ export class JoplinApiClient {
 
     return this.renameTag(exactMatch.id, newName);
   }
+
+  /**
+   * Get all notes that have a specific tag
+   */
+  async getTagNotes(tagId: string, fields?: string): Promise<unknown> {
+    const fieldsParam =
+      fields ||
+      'id,title,body,parent_id,created_time,updated_time,user_created_time,user_updated_time,is_todo,todo_completed';
+
+    return this.paginatedRequest(`/tags/${tagId}/notes?fields=${fieldsParam}`);
+  }
+
+  /**
+   * Get notes by tag name (finds tag by name, then gets notes)
+   */
+  async getNotesByTagName(tagName: string): Promise<unknown> {
+    // Search for tag by exact name
+    const tags = (await this.searchNotes(tagName, 'tag')) as Array<{
+      id: string;
+      title: string;
+    }>;
+
+    const exactMatch = tags.find(
+      (t) => t.title.toLowerCase() === tagName.toLowerCase(),
+    );
+
+    if (!exactMatch) {
+      throw new Error(`Tag not found: ${tagName}`);
+    }
+
+    return this.getTagNotes(exactMatch.id);
+  }
 }
 
 export class JoplinServer {
@@ -735,6 +767,23 @@ export class JoplinServer {
               required: ['new_name'],
             },
           },
+          {
+            name: 'get_notes_by_tag',
+            description: 'Get all notes that have a specific tag. Provide either tag_id or tag_name.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                tag_id: {
+                  type: 'string',
+                  description: 'The ID of the tag (use this OR tag_name)',
+                },
+                tag_name: {
+                  type: 'string',
+                  description: 'The name of the tag (use this OR tag_id)',
+                },
+              },
+            },
+          },
         ],
       };
     });
@@ -988,6 +1037,26 @@ export class JoplinServer {
                 {
                   type: 'text',
                   text: `Renamed tag to: ${args.new_name}`,
+                },
+              ],
+            };
+          }
+
+          case 'get_notes_by_tag': {
+            let result;
+            if (args.tag_id) {
+              result = await this.apiClient.getTagNotes(args.tag_id as string);
+            } else if (args.tag_name) {
+              result = await this.apiClient.getNotesByTagName(args.tag_name as string);
+            } else {
+              throw new Error('Must provide either tag_id or tag_name');
+            }
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(result, null, 2),
                 },
               ],
             };
