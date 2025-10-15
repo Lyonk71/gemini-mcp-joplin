@@ -233,6 +233,19 @@ export class JoplinApiClient {
   }
 
   // Note operations
+  async listAllNotes(fields?: string, includeDeleted = false): Promise<unknown> {
+    const fieldsParam =
+      fields ||
+      'id,title,body,parent_id,created_time,updated_time,user_created_time,user_updated_time,is_todo,todo_completed';
+
+    let endpoint = `/notes?fields=${fieldsParam}`;
+    if (includeDeleted) {
+      endpoint += '&include_deleted=1';
+    }
+
+    return this.paginatedRequest(endpoint);
+  }
+
   async searchNotes(query: string, type?: string): Promise<unknown> {
     let url = `/search?query=${encodeURIComponent(query)}`;
     if (type) url += `&type=${type}`;
@@ -557,6 +570,19 @@ export class JoplinServer {
 
           // Note Operations
           {
+            name: 'list_all_notes',
+            description: 'List all notes across all notebooks. Returns note titles, IDs, content, and metadata. Optionally include deleted notes.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                include_deleted: {
+                  type: 'boolean',
+                  description: 'Include deleted notes (default: false)',
+                },
+              },
+            },
+          },
+          {
             name: 'search_notes',
             description:
               'Search for notes using keywords. Supports wildcards (*). Can optionally filter by type (note, folder, tag).',
@@ -867,6 +893,21 @@ export class JoplinServer {
           }
 
           // Note Operations
+          case 'list_all_notes': {
+            const result = await this.apiClient.listAllNotes(
+              undefined,
+              args.include_deleted as boolean | undefined,
+            );
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(result, null, 2),
+                },
+              ],
+            };
+          }
+
           case 'search_notes': {
             const result = await this.apiClient.searchNotes(
               args.query as string,
