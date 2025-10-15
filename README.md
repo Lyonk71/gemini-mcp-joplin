@@ -12,7 +12,7 @@ That's it! The extension automatically discovers your API token from Joplin's se
 ## Installation
 
 ```bash
-gemini extensions install path/to/gemini-mcp-joplin
+gemini extensions install https://github.com/Lyonk71/gemini-mcp-joplin
 ```
 
 ## Setup
