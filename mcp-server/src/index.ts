@@ -473,6 +473,18 @@ export class JoplinApiClient {
 
     return this.getTagNotes(exactMatch.id);
   }
+
+  // Resource operations
+  /**
+   * List all resources (file attachments) globally
+   */
+  async listAllResources(fields?: string): Promise<unknown> {
+    const fieldsParam =
+      fields ||
+      'id,title,mime,filename,size,created_time,updated_time,file_extension,ocr_text,ocr_status';
+
+    return this.paginatedRequest(`/resources?fields=${fieldsParam}`);
+  }
 }
 
 export class JoplinServer {
@@ -843,6 +855,16 @@ export class JoplinServer {
               },
             },
           },
+
+          // Resource Operations
+          {
+            name: 'list_all_resources',
+            description: 'List all file attachments (images, PDFs, etc.) across all notes. Returns metadata including OCR text if available.',
+            inputSchema: {
+              type: 'object',
+              properties: {},
+            },
+          },
         ],
       };
     });
@@ -1146,6 +1168,19 @@ export class JoplinServer {
               throw new Error('Must provide either tag_id or tag_name');
             }
 
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(result, null, 2),
+                },
+              ],
+            };
+          }
+
+          // Resource Operations
+          case 'list_all_resources': {
+            const result = await this.apiClient.listAllResources();
             return {
               content: [
                 {
