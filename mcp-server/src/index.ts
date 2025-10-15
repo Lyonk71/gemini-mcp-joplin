@@ -545,6 +545,93 @@ export class JoplinApiClient {
   }
 
   /**
+   * Upload a new resource
+   */
+  async uploadResource(
+    filePath: string,
+    title: string,
+    mimeType: string,
+  ): Promise<unknown> {
+    const fs = await import('fs');
+    const FormData = (await import('form-data')).default;
+
+    const formData = new FormData();
+
+    // Add props as JSON
+    formData.append('props', JSON.stringify({ title, mime: mimeType }));
+
+    // Add file data
+    const fileStream = fs.createReadStream(filePath);
+    formData.append('data', fileStream);
+
+    // Make request with FormData
+    const url = new URL('/resources', this.baseUrl);
+    url.searchParams.append('token', this.token);
+
+    const response = await fetch(url.toString(), {
+      method: 'POST',
+      body: formData as unknown as BodyInit,
+      headers: formData.getHeaders(),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to upload resource: ${errorText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Update a resource with new file content
+   */
+  async updateResourceWithFile(
+    resourceId: string,
+    filePath: string,
+    updates: { title?: string; mime?: string },
+  ): Promise<unknown> {
+    const fs = await import('fs');
+    const FormData = (await import('form-data')).default;
+
+    const formData = new FormData();
+
+    // Add props if provided
+    if (updates && Object.keys(updates).length > 0) {
+      formData.append('props', JSON.stringify(updates));
+    }
+
+    // Add file data
+    const fileStream = fs.createReadStream(filePath);
+    formData.append('data', fileStream);
+
+    const url = new URL(`/resources/${resourceId}`, this.baseUrl);
+    url.searchParams.append('token', this.token);
+
+    const response = await fetch(url.toString(), {
+      method: 'PUT',
+      body: formData as unknown as BodyInit,
+      headers: formData.getHeaders(),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to update resource: ${errorText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Update resource metadata only (without file)
+   */
+  async updateResourceMetadata(
+    resourceId: string,
+    updates: { title?: string },
+  ): Promise<unknown> {
+    return this.request('PUT', `/resources/${resourceId}`, updates);
+  }
+
+  /**
    * Delete a resource
    */
   async deleteResource(resourceId: string): Promise<void> {
@@ -991,6 +1078,54 @@ export class JoplinServer {
             },
           },
           {
+            name: 'upload_attachment',
+            description: 'Upload a file attachment (image, PDF, etc.) to Joplin. Returns resource ID that can be referenced in notes.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                file_path: {
+                  type: 'string',
+                  description: 'Local file path to upload',
+                },
+                title: {
+                  type: 'string',
+                  description: 'Filename to use in Joplin',
+                },
+                mime_type: {
+                  type: 'string',
+                  description: 'MIME type (e.g., image/png, application/pdf)',
+                },
+              },
+              required: ['file_path', 'title', 'mime_type'],
+            },
+          },
+          {
+            name: 'update_resource',
+            description: 'Update a resource/attachment. Can update file content, metadata (title), or both.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                resource_id: {
+                  type: 'string',
+                  description: 'The ID of the resource to update',
+                },
+                file_path: {
+                  type: 'string',
+                  description: 'Optional: New file to replace existing content',
+                },
+                title: {
+                  type: 'string',
+                  description: 'Optional: New title for the resource',
+                },
+                mime_type: {
+                  type: 'string',
+                  description: 'Optional: New MIME type (only with file_path)',
+                },
+              },
+              required: ['resource_id'],
+            },
+          },
+          {
             name: 'delete_resource',
             description: 'Delete a resource/attachment from Joplin. WARNING: This will break references in notes that use this resource. Use get_resource_notes first to check usage.',
             inputSchema: {
@@ -1376,6 +1511,57 @@ export class JoplinServer {
                 {
                   type: 'text',
                   text: `Downloaded resource to: ${args.output_path}`,
+                },
+              ],
+            };
+          }
+
+          case 'upload_attachment': {
+            const result = (await this.apiClient.uploadResource(
+              args.file_path as string,
+              args.title as string,
+              args.mime_type as string,
+            )) as { id: string; title: string };
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `Uploaded resource: ${result.title} (ID: ${result.id})`,
+                },
+              ],
+            };
+          }
+
+          case 'update_resource': {
+            let result;
+
+            if (args.file_path) {
+              // Update with new file
+              const updates: { title?: string; mime?: string } = {};
+              if (args.title) updates.title = args.title as string;
+              if (args.mime_type) updates.mime = args.mime_type as string;
+
+              result = (await this.apiClient.updateResourceWithFile(
+                args.resource_id as string,
+                args.file_path as string,
+                updates,
+              )) as { title: string; id: string };
+            } else if (args.title) {
+              // Update metadata only
+              result = (await this.apiClient.updateResourceMetadata(
+                args.resource_id as string,
+                { title: args.title as string },
+              )) as { title: string; id: string };
+            } else {
+              throw new Error('Must provide either file_path or title to update');
+            }
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `Updated resource: ${result.title} (ID: ${result.id})`,
                 },
               ],
             };
