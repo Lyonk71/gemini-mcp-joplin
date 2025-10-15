@@ -228,6 +228,17 @@ export class JoplinApiClient {
     );
   }
 
+  async updateNotebook(
+    notebookId: string,
+    updates: { title?: string; parent_id?: string },
+  ): Promise<unknown> {
+    return this.request('PUT', `/folders/${notebookId}`, updates);
+  }
+
+  async renameNotebook(notebookId: string, newTitle: string): Promise<unknown> {
+    return this.updateNotebook(notebookId, { title: newTitle });
+  }
+
   async deleteNotebook(notebookId: string): Promise<unknown> {
     return this.request('DELETE', `/folders/${notebookId}`);
   }
@@ -530,6 +541,28 @@ export class JoplinServer {
                 notebook_id: {
                   type: 'string',
                   description: 'The ID of the notebook',
+                },
+              },
+              required: ['notebook_id'],
+            },
+          },
+          {
+            name: 'update_notebook',
+            description: 'Update notebook properties (rename or move to different parent).',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                notebook_id: {
+                  type: 'string',
+                  description: 'The ID of the notebook to update',
+                },
+                title: {
+                  type: 'string',
+                  description: 'Optional: New title for the notebook',
+                },
+                parent_id: {
+                  type: 'string',
+                  description: 'Optional: New parent notebook ID (for nesting)',
                 },
               },
               required: ['notebook_id'],
@@ -860,6 +893,26 @@ export class JoplinServer {
                 {
                   type: 'text',
                   text: JSON.stringify(result, null, 2),
+                },
+              ],
+            };
+          }
+
+          case 'update_notebook': {
+            const updates: { title?: string; parent_id?: string } = {};
+            if (args.title) updates.title = args.title as string;
+            if (args.parent_id) updates.parent_id = args.parent_id as string;
+
+            const result = (await this.apiClient.updateNotebook(
+              args.notebook_id as string,
+              updates,
+            )) as { title: string; id: string };
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `Updated notebook: ${result.title} (ID: ${result.id})`,
                 },
               ],
             };
