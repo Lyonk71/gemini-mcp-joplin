@@ -389,6 +389,34 @@ export class JoplinApiClient {
   async listTags(): Promise<unknown> {
     return this.paginatedRequest('/tags?fields=id,title,created_time,updated_time');
   }
+
+  /**
+   * Rename a tag by ID
+   */
+  async renameTag(tagId: string, newName: string): Promise<unknown> {
+    return this.request('PUT', `/tags/${tagId}`, { title: newName });
+  }
+
+  /**
+   * Rename a tag by name (finds tag by old name, then renames it)
+   */
+  async renameTagByName(oldName: string, newName: string): Promise<unknown> {
+    // Find tag by old name
+    const tags = (await this.searchNotes(oldName, 'tag')) as Array<{
+      id: string;
+      title: string;
+    }>;
+
+    const exactMatch = tags.find(
+      (t) => t.title.toLowerCase() === oldName.toLowerCase(),
+    );
+
+    if (!exactMatch) {
+      throw new Error(`Tag not found: ${oldName}`);
+    }
+
+    return this.renameTag(exactMatch.id, newName);
+  }
 }
 
 export class JoplinServer {
@@ -685,6 +713,28 @@ export class JoplinServer {
               properties: {},
             },
           },
+          {
+            name: 'rename_tag',
+            description: 'Rename a tag. All notes with this tag will show the new name. Provide either tag_id or current_name.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                tag_id: {
+                  type: 'string',
+                  description: 'The ID of the tag to rename (use this OR current_name)',
+                },
+                current_name: {
+                  type: 'string',
+                  description: 'Current name of the tag (use this OR tag_id)',
+                },
+                new_name: {
+                  type: 'string',
+                  description: 'New name for the tag',
+                },
+              },
+              required: ['new_name'],
+            },
+          },
         ],
       };
     });
@@ -912,6 +962,32 @@ export class JoplinServer {
                 {
                   type: 'text',
                   text: JSON.stringify(result, null, 2),
+                },
+              ],
+            };
+          }
+
+          case 'rename_tag': {
+            let result;
+            if (args.tag_id) {
+              result = await this.apiClient.renameTag(
+                args.tag_id as string,
+                args.new_name as string,
+              );
+            } else if (args.current_name) {
+              result = await this.apiClient.renameTagByName(
+                args.current_name as string,
+                args.new_name as string,
+              );
+            } else {
+              throw new Error('Must provide either tag_id or current_name');
+            }
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `Renamed tag to: ${args.new_name}`,
                 },
               ],
             };
