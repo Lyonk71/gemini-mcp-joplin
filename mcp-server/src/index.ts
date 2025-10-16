@@ -783,18 +783,18 @@ export class JoplinApiClient {
 
   // Revision operations
   /**
-   * List all revisions for a specific note
+   * List all revisions (across all notes)
    */
-  async listNoteRevisions(
-    noteId: string,
+  async listAllRevisions(
     fields?: string,
     orderBy?: string,
     orderDir?: 'ASC' | 'DESC',
     limit?: number,
   ): Promise<unknown> {
     const fieldsParam =
-      fields || 'id,parent_id,item_type,item_id,item_updated_time,created_time';
-    let endpoint = `/notes/${noteId}/revisions?fields=${fieldsParam}`;
+      fields ||
+      'id,parent_id,item_type,item_id,item_updated_time,created_time,updated_time';
+    let endpoint = `/revisions?fields=${fieldsParam}`;
     if (orderBy) {
       endpoint += `&order_by=${orderBy}`;
     }
@@ -1622,20 +1622,16 @@ Examples:
 
           // Revision Operations
           {
-            name: 'list_note_revisions',
+            name: 'list_all_revisions',
             description:
-              'List all revisions (version history) for a specific note. Returns revision IDs, timestamps, and change metadata. Optionally sort results.',
+              'List all revisions (version history) across all notes. Returns revision IDs, item_id (note ID), timestamps, and change metadata. Filter by item_id after retrieval to find revisions for a specific note. Optionally sort results.',
             inputSchema: {
               type: 'object',
               properties: {
-                note_id: {
-                  type: 'string',
-                  description: 'The ID of the note',
-                },
                 fields: {
                   type: 'string',
                   description:
-                    'Optional: Comma-separated list of fields to return. Default: id,parent_id,item_type,item_id,item_updated_time,created_time',
+                    'Optional: Comma-separated list of fields to return. Default: id,parent_id,item_type,item_id,item_updated_time,created_time,updated_time',
                 },
                 order_by: {
                   type: 'string',
@@ -1654,13 +1650,12 @@ Examples:
                     'Optional: Maximum number of items to return (default: 100)',
                 },
               },
-              required: ['note_id'],
             },
           },
           {
             name: 'get_revision',
             description:
-              'Get details of a specific revision by ID. Returns the diff showing what changed (title_diff, body_diff, metadata_diff) and timestamps. Useful for viewing or restoring previous versions.',
+              'Get details of a specific revision by ID. Returns the diff showing what changed (title_diff, body_diff, metadata_diff) and timestamps. Useful for viewing or restoring previous versions. Note: To find revision IDs for a note, first use list_all_revisions and filter by item_id.',
             inputSchema: {
               type: 'object',
               properties: {
@@ -2237,9 +2232,8 @@ Examples:
           }
 
           // Revision Operations
-          case 'list_note_revisions': {
-            const result = await this.apiClient.listNoteRevisions(
-              args.note_id as string,
+          case 'list_all_revisions': {
+            const result = await this.apiClient.listAllRevisions(
               args.fields as string | undefined,
               args.order_by as string | undefined,
               args.order_dir as 'ASC' | 'DESC' | undefined,
