@@ -205,11 +205,14 @@ export class JoplinApiClient {
 
   // Notebook (Folder) operations
   async listNotebooks(
+    fields?: string,
     orderBy?: string,
     orderDir?: 'ASC' | 'DESC',
   ): Promise<unknown> {
-    let endpoint =
-      '/folders?fields=id,title,parent_id,created_time,updated_time,user_created_time,user_updated_time';
+    const fieldsParam =
+      fields ||
+      'id,title,parent_id,created_time,updated_time,user_created_time,user_updated_time';
+    let endpoint = `/folders?fields=${fieldsParam}`;
     if (orderBy) {
       endpoint += `&order_by=${orderBy}`;
     }
@@ -441,10 +444,12 @@ export class JoplinApiClient {
    * List all tags in Joplin
    */
   async listTags(
+    fields?: string,
     orderBy?: string,
     orderDir?: 'ASC' | 'DESC',
   ): Promise<unknown> {
-    let endpoint = '/tags?fields=id,title,created_time,updated_time';
+    const fieldsParam = fields || 'id,title,created_time,updated_time';
+    let endpoint = `/tags?fields=${fieldsParam}`;
     if (orderBy) {
       endpoint += `&order_by=${orderBy}`;
     }
@@ -510,6 +515,7 @@ export class JoplinApiClient {
    */
   async getNotesByTagName(
     tagName: string,
+    fields?: string,
     orderBy?: string,
     orderDir?: 'ASC' | 'DESC',
   ): Promise<unknown> {
@@ -527,7 +533,7 @@ export class JoplinApiClient {
       throw new Error(`Tag not found: ${tagName}`);
     }
 
-    return this.getTagNotes(exactMatch.id, undefined, orderBy, orderDir);
+    return this.getTagNotes(exactMatch.id, fields, orderBy, orderDir);
   }
 
   // Resource operations
@@ -773,6 +779,11 @@ export class JoplinServer {
             inputSchema: {
               type: 'object',
               properties: {
+                fields: {
+                  type: 'string',
+                  description:
+                    'Optional: Comma-separated list of fields to return (e.g., "id,title,updated_time"). Default: id,title,parent_id,created_time,updated_time,user_created_time,user_updated_time',
+                },
                 order_by: {
                   type: 'string',
                   description:
@@ -817,6 +828,11 @@ export class JoplinServer {
                 notebook_id: {
                   type: 'string',
                   description: 'The ID of the notebook',
+                },
+                fields: {
+                  type: 'string',
+                  description:
+                    'Optional: Comma-separated list of fields to return (e.g., "id,title,updated_time"). Default: id,title,body,parent_id,created_time,updated_time,user_created_time,user_updated_time,is_todo,todo_completed',
                 },
                 order_by: {
                   type: 'string',
@@ -1139,6 +1155,11 @@ Examples:
             inputSchema: {
               type: 'object',
               properties: {
+                fields: {
+                  type: 'string',
+                  description:
+                    'Optional: Comma-separated list of fields to return (e.g., "id,title,updated_time"). Default: id,title,created_time,updated_time',
+                },
                 order_by: {
                   type: 'string',
                   description:
@@ -1192,6 +1213,11 @@ Examples:
                   type: 'string',
                   description: 'The name of the tag (use this OR tag_id)',
                 },
+                fields: {
+                  type: 'string',
+                  description:
+                    'Optional: Comma-separated list of fields to return (e.g., "id,title,updated_time"). Default: id,title,body,parent_id,created_time,updated_time,user_created_time,user_updated_time,is_todo,todo_completed',
+                },
                 order_by: {
                   type: 'string',
                   description:
@@ -1215,6 +1241,11 @@ Examples:
             inputSchema: {
               type: 'object',
               properties: {
+                fields: {
+                  type: 'string',
+                  description:
+                    'Optional: Comma-separated list of fields to return (e.g., "id,title,updated_time"). Default: id,title,mime,filename,size,created_time,updated_time,file_extension,ocr_text,ocr_status',
+                },
                 order_by: {
                   type: 'string',
                   description:
@@ -1255,6 +1286,11 @@ Examples:
                   type: 'string',
                   description: 'The ID of the note',
                 },
+                fields: {
+                  type: 'string',
+                  description:
+                    'Optional: Comma-separated list of fields to return (e.g., "id,title,updated_time"). Default: id,title,mime,filename,size,file_extension,created_time,updated_time',
+                },
                 order_by: {
                   type: 'string',
                   description:
@@ -1280,6 +1316,11 @@ Examples:
                 resource_id: {
                   type: 'string',
                   description: 'The ID of the resource',
+                },
+                fields: {
+                  type: 'string',
+                  description:
+                    'Optional: Comma-separated list of fields to return (e.g., "id,title,updated_time"). Default: id,title,parent_id,created_time,updated_time',
                 },
                 order_by: {
                   type: 'string',
@@ -1396,6 +1437,7 @@ Examples:
           // Notebook Management
           case 'list_notebooks': {
             const result = await this.apiClient.listNotebooks(
+              args.fields as string | undefined,
               args.order_by as string | undefined,
               args.order_dir as 'ASC' | 'DESC' | undefined,
             );
@@ -1427,7 +1469,7 @@ Examples:
           case 'get_notebook_notes': {
             const result = await this.apiClient.getNotebookNotes(
               args.notebook_id as string,
-              undefined,
+              args.fields as string | undefined,
               args.order_by as string | undefined,
               args.order_dir as 'ASC' | 'DESC' | undefined,
             );
@@ -1645,6 +1687,7 @@ Examples:
 
           case 'list_tags': {
             const result = await this.apiClient.listTags(
+              args.fields as string | undefined,
               args.order_by as string | undefined,
               args.order_dir as 'ASC' | 'DESC' | undefined,
             );
@@ -1688,13 +1731,14 @@ Examples:
             if (args.tag_id) {
               result = await this.apiClient.getTagNotes(
                 args.tag_id as string,
-                undefined,
+                args.fields as string | undefined,
                 args.order_by as string | undefined,
                 args.order_dir as 'ASC' | 'DESC' | undefined,
               );
             } else if (args.tag_name) {
               result = await this.apiClient.getNotesByTagName(
                 args.tag_name as string,
+                args.fields as string | undefined,
                 args.order_by as string | undefined,
                 args.order_dir as 'ASC' | 'DESC' | undefined,
               );
@@ -1715,7 +1759,7 @@ Examples:
           // Resource Operations
           case 'list_all_resources': {
             const result = await this.apiClient.listAllResources(
-              undefined,
+              args.fields as string | undefined,
               args.order_by as string | undefined,
               args.order_dir as 'ASC' | 'DESC' | undefined,
             );
@@ -1746,7 +1790,7 @@ Examples:
           case 'get_note_attachments': {
             const result = await this.apiClient.getNoteResources(
               args.note_id as string,
-              undefined,
+              args.fields as string | undefined,
               args.order_by as string | undefined,
               args.order_dir as 'ASC' | 'DESC' | undefined,
             );
@@ -1763,7 +1807,7 @@ Examples:
           case 'get_resource_notes': {
             const result = await this.apiClient.getResourceNotes(
               args.resource_id as string,
-              undefined,
+              args.fields as string | undefined,
               args.order_by as string | undefined,
               args.order_dir as 'ASC' | 'DESC' | undefined,
             );
