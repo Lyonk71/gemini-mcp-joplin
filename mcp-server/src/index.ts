@@ -247,6 +247,8 @@ export class JoplinApiClient {
   async listAllNotes(
     fields?: string,
     includeDeleted = false,
+    orderBy?: string,
+    orderDir?: 'ASC' | 'DESC',
   ): Promise<unknown> {
     const fieldsParam =
       fields ||
@@ -255,6 +257,12 @@ export class JoplinApiClient {
     let endpoint = `/notes?fields=${fieldsParam}`;
     if (includeDeleted) {
       endpoint += '&include_deleted=1';
+    }
+    if (orderBy) {
+      endpoint += `&order_by=${orderBy}`;
+    }
+    if (orderDir) {
+      endpoint += `&order_dir=${orderDir}`;
     }
 
     return this.paginatedRequest(endpoint);
@@ -793,13 +801,24 @@ export class JoplinServer {
           {
             name: 'list_all_notes',
             description:
-              'List all notes across all notebooks. Returns note titles, IDs, content, and metadata. Optionally include deleted notes.',
+              'List all notes across all notebooks. Returns note titles, IDs, content, and metadata. Optionally include deleted notes and sort results.',
             inputSchema: {
               type: 'object',
               properties: {
                 include_deleted: {
                   type: 'boolean',
                   description: 'Include deleted notes (default: false)',
+                },
+                order_by: {
+                  type: 'string',
+                  description:
+                    'Field to sort by: title, updated_time, created_time, user_updated_time, user_created_time (default: updated_time)',
+                },
+                order_dir: {
+                  type: 'string',
+                  enum: ['ASC', 'DESC'],
+                  description:
+                    'Sort direction: ASC (ascending) or DESC (descending). Default: DESC. Example: order_by=updated_time, order_dir=DESC for most recent first',
                 },
               },
             },
@@ -1313,6 +1332,8 @@ Examples:
             const result = await this.apiClient.listAllNotes(
               undefined,
               args.include_deleted as boolean | undefined,
+              args.order_by as string | undefined,
+              args.order_dir as 'ASC' | 'DESC' | undefined,
             );
             return {
               content: [
