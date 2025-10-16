@@ -228,13 +228,20 @@ export class JoplinApiClient {
   async getNotebookNotes(
     notebookId: string,
     fields?: string,
+    orderBy?: string,
+    orderDir?: 'ASC' | 'DESC',
   ): Promise<unknown> {
     const fieldsParam =
       fields ||
       'id,title,body,parent_id,created_time,updated_time,user_created_time,user_updated_time,is_todo,todo_completed';
-    return this.paginatedRequest(
-      `/folders/${notebookId}/notes?fields=${fieldsParam}`,
-    );
+    let endpoint = `/folders/${notebookId}/notes?fields=${fieldsParam}`;
+    if (orderBy) {
+      endpoint += `&order_by=${orderBy}`;
+    }
+    if (orderDir) {
+      endpoint += `&order_dir=${orderDir}`;
+    }
+    return this.paginatedRequest(endpoint);
   }
 
   async updateNotebook(
@@ -478,18 +485,34 @@ export class JoplinApiClient {
   /**
    * Get all notes that have a specific tag
    */
-  async getTagNotes(tagId: string, fields?: string): Promise<unknown> {
+  async getTagNotes(
+    tagId: string,
+    fields?: string,
+    orderBy?: string,
+    orderDir?: 'ASC' | 'DESC',
+  ): Promise<unknown> {
     const fieldsParam =
       fields ||
       'id,title,body,parent_id,created_time,updated_time,user_created_time,user_updated_time,is_todo,todo_completed';
 
-    return this.paginatedRequest(`/tags/${tagId}/notes?fields=${fieldsParam}`);
+    let endpoint = `/tags/${tagId}/notes?fields=${fieldsParam}`;
+    if (orderBy) {
+      endpoint += `&order_by=${orderBy}`;
+    }
+    if (orderDir) {
+      endpoint += `&order_dir=${orderDir}`;
+    }
+    return this.paginatedRequest(endpoint);
   }
 
   /**
    * Get notes by tag name (finds tag by name, then gets notes)
    */
-  async getNotesByTagName(tagName: string): Promise<unknown> {
+  async getNotesByTagName(
+    tagName: string,
+    orderBy?: string,
+    orderDir?: 'ASC' | 'DESC',
+  ): Promise<unknown> {
     // Search for tag by exact name
     const tags = (await this.searchNotes(tagName, 'tag')) as Array<{
       id: string;
@@ -504,7 +527,7 @@ export class JoplinApiClient {
       throw new Error(`Tag not found: ${tagName}`);
     }
 
-    return this.getTagNotes(exactMatch.id);
+    return this.getTagNotes(exactMatch.id, undefined, orderBy, orderDir);
   }
 
   // Resource operations
@@ -551,14 +574,24 @@ export class JoplinApiClient {
   /**
    * Get all resources (attachments) for a specific note
    */
-  async getNoteResources(noteId: string, fields?: string): Promise<unknown> {
+  async getNoteResources(
+    noteId: string,
+    fields?: string,
+    orderBy?: string,
+    orderDir?: 'ASC' | 'DESC',
+  ): Promise<unknown> {
     const fieldsParam =
       fields ||
       'id,title,mime,filename,size,file_extension,created_time,updated_time';
 
-    return this.paginatedRequest(
-      `/notes/${noteId}/resources?fields=${fieldsParam}`,
-    );
+    let endpoint = `/notes/${noteId}/resources?fields=${fieldsParam}`;
+    if (orderBy) {
+      endpoint += `&order_by=${orderBy}`;
+    }
+    if (orderDir) {
+      endpoint += `&order_dir=${orderDir}`;
+    }
+    return this.paginatedRequest(endpoint);
   }
 
   /**
@@ -567,13 +600,20 @@ export class JoplinApiClient {
   async getResourceNotes(
     resourceId: string,
     fields?: string,
+    orderBy?: string,
+    orderDir?: 'ASC' | 'DESC',
   ): Promise<unknown> {
     const fieldsParam =
       fields || 'id,title,parent_id,created_time,updated_time';
 
-    return this.paginatedRequest(
-      `/resources/${resourceId}/notes?fields=${fieldsParam}`,
-    );
+    let endpoint = `/resources/${resourceId}/notes?fields=${fieldsParam}`;
+    if (orderBy) {
+      endpoint += `&order_by=${orderBy}`;
+    }
+    if (orderDir) {
+      endpoint += `&order_dir=${orderDir}`;
+    }
+    return this.paginatedRequest(endpoint);
   }
 
   /**
@@ -770,13 +810,24 @@ export class JoplinServer {
           {
             name: 'get_notebook_notes',
             description:
-              'Get all notes from a specific notebook. Returns note titles, IDs, and metadata.',
+              'Get all notes from a specific notebook. Returns note titles, IDs, and metadata. Optionally sort results.',
             inputSchema: {
               type: 'object',
               properties: {
                 notebook_id: {
                   type: 'string',
                   description: 'The ID of the notebook',
+                },
+                order_by: {
+                  type: 'string',
+                  description:
+                    'Field to sort by: title, updated_time, created_time, user_updated_time, user_created_time (default: updated_time)',
+                },
+                order_dir: {
+                  type: 'string',
+                  enum: ['ASC', 'DESC'],
+                  description:
+                    'Sort direction: ASC (ascending) or DESC (descending). Default: DESC',
                 },
               },
               required: ['notebook_id'],
@@ -1124,7 +1175,7 @@ Examples:
           {
             name: 'get_notes_by_tag',
             description:
-              'Get all notes that have a specific tag. Provide either tag_id or tag_name.',
+              'Get all notes that have a specific tag. Provide either tag_id or tag_name. Optionally sort results.',
             inputSchema: {
               type: 'object',
               properties: {
@@ -1135,6 +1186,17 @@ Examples:
                 tag_name: {
                   type: 'string',
                   description: 'The name of the tag (use this OR tag_id)',
+                },
+                order_by: {
+                  type: 'string',
+                  description:
+                    'Field to sort by: title, updated_time, created_time, user_updated_time, user_created_time (default: updated_time)',
+                },
+                order_dir: {
+                  type: 'string',
+                  enum: ['ASC', 'DESC'],
+                  description:
+                    'Sort direction: ASC (ascending) or DESC (descending). Default: DESC',
                 },
               },
             },
@@ -1179,13 +1241,25 @@ Examples:
           },
           {
             name: 'get_note_attachments',
-            description: 'List all file attachments in a specific note.',
+            description:
+              'List all file attachments in a specific note. Optionally sort results.',
             inputSchema: {
               type: 'object',
               properties: {
                 note_id: {
                   type: 'string',
                   description: 'The ID of the note',
+                },
+                order_by: {
+                  type: 'string',
+                  description:
+                    'Field to sort by: title, updated_time, created_time, size (default: updated_time)',
+                },
+                order_dir: {
+                  type: 'string',
+                  enum: ['ASC', 'DESC'],
+                  description:
+                    'Sort direction: ASC (ascending) or DESC (descending). Default: DESC',
                 },
               },
               required: ['note_id'],
@@ -1194,13 +1268,24 @@ Examples:
           {
             name: 'get_resource_notes',
             description:
-              'Find all notes that reference/use a specific resource/attachment. Essential before deleting a resource.',
+              'Find all notes that reference/use a specific resource/attachment. Essential before deleting a resource. Optionally sort results.',
             inputSchema: {
               type: 'object',
               properties: {
                 resource_id: {
                   type: 'string',
                   description: 'The ID of the resource',
+                },
+                order_by: {
+                  type: 'string',
+                  description:
+                    'Field to sort by: title, updated_time, created_time (default: updated_time)',
+                },
+                order_dir: {
+                  type: 'string',
+                  enum: ['ASC', 'DESC'],
+                  description:
+                    'Sort direction: ASC (ascending) or DESC (descending). Default: DESC',
                 },
               },
               required: ['resource_id'],
@@ -1337,6 +1422,9 @@ Examples:
           case 'get_notebook_notes': {
             const result = await this.apiClient.getNotebookNotes(
               args.notebook_id as string,
+              undefined,
+              args.order_by as string | undefined,
+              args.order_dir as 'ASC' | 'DESC' | undefined,
             );
             return {
               content: [
@@ -1593,10 +1681,17 @@ Examples:
           case 'get_notes_by_tag': {
             let result;
             if (args.tag_id) {
-              result = await this.apiClient.getTagNotes(args.tag_id as string);
+              result = await this.apiClient.getTagNotes(
+                args.tag_id as string,
+                undefined,
+                args.order_by as string | undefined,
+                args.order_dir as 'ASC' | 'DESC' | undefined,
+              );
             } else if (args.tag_name) {
               result = await this.apiClient.getNotesByTagName(
                 args.tag_name as string,
+                args.order_by as string | undefined,
+                args.order_dir as 'ASC' | 'DESC' | undefined,
               );
             } else {
               throw new Error('Must provide either tag_id or tag_name');
@@ -1646,6 +1741,9 @@ Examples:
           case 'get_note_attachments': {
             const result = await this.apiClient.getNoteResources(
               args.note_id as string,
+              undefined,
+              args.order_by as string | undefined,
+              args.order_dir as 'ASC' | 'DESC' | undefined,
             );
             return {
               content: [
@@ -1660,6 +1758,9 @@ Examples:
           case 'get_resource_notes': {
             const result = await this.apiClient.getResourceNotes(
               args.resource_id as string,
+              undefined,
+              args.order_by as string | undefined,
+              args.order_dir as 'ASC' | 'DESC' | undefined,
             );
             return {
               content: [
