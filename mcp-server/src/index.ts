@@ -311,9 +311,15 @@ export class JoplinApiClient {
     body: string,
     notebookId?: string,
     tags?: string,
+    isTodo?: number,
+    todoDue?: number,
+    todoCompleted?: number,
   ): Promise<unknown> {
     const noteData: Record<string, unknown> = { title, body };
     if (notebookId) noteData.parent_id = notebookId;
+    if (isTodo !== undefined) noteData.is_todo = isTodo;
+    if (todoDue !== undefined) noteData.todo_due = todoDue;
+    if (todoCompleted !== undefined) noteData.todo_completed = todoCompleted;
 
     // Create note first (API doesn't accept tags parameter)
     const note = (await this.request('POST', '/notes', noteData)) as {
@@ -1004,7 +1010,7 @@ Examples:
           {
             name: 'create_note',
             description:
-              'Create a new note with title and body content. Optionally specify notebook and tags.',
+              'Create a new note with title and body content. Can create regular notes or todos with due dates. Optionally specify notebook and tags.',
             inputSchema: {
               type: 'object',
               properties: {
@@ -1024,6 +1030,21 @@ Examples:
                 tags: {
                   type: 'string',
                   description: 'Optional: Comma-separated list of tag names',
+                },
+                is_todo: {
+                  type: 'number',
+                  description:
+                    'Optional: Set to 1 to create a todo item, 0 for regular note (default: 0)',
+                },
+                todo_due: {
+                  type: 'number',
+                  description:
+                    'Optional: Unix timestamp (in milliseconds) for when the todo is due. Only applicable when is_todo=1',
+                },
+                todo_completed: {
+                  type: 'number',
+                  description:
+                    'Optional: Unix timestamp (in milliseconds) for when the todo was completed. Only applicable when is_todo=1. Set to 0 for incomplete',
                 },
               },
               required: ['title', 'body'],
@@ -1581,6 +1602,9 @@ Examples:
               args.body as string,
               args.notebook_id as string | undefined,
               args.tags as string | undefined,
+              args.is_todo as number | undefined,
+              args.todo_due as number | undefined,
+              args.todo_completed as number | undefined,
             )) as { title: string; id: string };
             return {
               content: [
