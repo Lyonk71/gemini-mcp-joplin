@@ -780,6 +780,42 @@ export class JoplinApiClient {
   async deleteResource(resourceId: string): Promise<void> {
     await this.request('DELETE', `/resources/${resourceId}`);
   }
+
+  // Revision operations
+  /**
+   * List all revisions for a specific note
+   */
+  async listNoteRevisions(
+    noteId: string,
+    fields?: string,
+    orderBy?: string,
+    orderDir?: 'ASC' | 'DESC',
+    limit?: number,
+  ): Promise<unknown> {
+    const fieldsParam =
+      fields || 'id,parent_id,item_type,item_id,item_updated_time,created_time';
+    let endpoint = `/notes/${noteId}/revisions?fields=${fieldsParam}`;
+    if (orderBy) {
+      endpoint += `&order_by=${orderBy}`;
+    }
+    if (orderDir) {
+      endpoint += `&order_dir=${orderDir}`;
+    }
+    return this.paginatedRequest(endpoint, limit);
+  }
+
+  /**
+   * Get a specific revision by ID
+   */
+  async getRevision(revisionId: string, fields?: string): Promise<unknown> {
+    const fieldsParam =
+      fields ||
+      'id,parent_id,item_type,item_id,item_updated_time,title_diff,body_diff,metadata_diff,encryption_applied,encryption_cipher_text,created_time,updated_time';
+    return this.request(
+      'GET',
+      `/revisions/${revisionId}?fields=${fieldsParam}`,
+    );
+  }
 }
 
 export class JoplinServer {
@@ -1583,6 +1619,64 @@ Examples:
               required: ['resource_id'],
             },
           },
+
+          // Revision Operations
+          {
+            name: 'list_note_revisions',
+            description:
+              'List all revisions (version history) for a specific note. Returns revision IDs, timestamps, and change metadata. Optionally sort results.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                note_id: {
+                  type: 'string',
+                  description: 'The ID of the note',
+                },
+                fields: {
+                  type: 'string',
+                  description:
+                    'Optional: Comma-separated list of fields to return. Default: id,parent_id,item_type,item_id,item_updated_time,created_time',
+                },
+                order_by: {
+                  type: 'string',
+                  description:
+                    'Field to sort by: created_time, item_updated_time (default: created_time)',
+                },
+                order_dir: {
+                  type: 'string',
+                  enum: ['ASC', 'DESC'],
+                  description:
+                    'Sort direction: ASC (oldest first) or DESC (newest first). Default: DESC',
+                },
+                limit: {
+                  type: 'number',
+                  description:
+                    'Optional: Maximum number of items to return (default: 100)',
+                },
+              },
+              required: ['note_id'],
+            },
+          },
+          {
+            name: 'get_revision',
+            description:
+              'Get details of a specific revision by ID. Returns the diff showing what changed (title_diff, body_diff, metadata_diff) and timestamps. Useful for viewing or restoring previous versions.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                revision_id: {
+                  type: 'string',
+                  description: 'The ID of the revision',
+                },
+                fields: {
+                  type: 'string',
+                  description:
+                    'Optional: Comma-separated list of fields to return. Default: id,parent_id,item_type,item_id,item_updated_time,title_diff,body_diff,metadata_diff,encryption_applied,encryption_cipher_text,created_time,updated_time',
+                },
+              },
+              required: ['revision_id'],
+            },
+          },
         ],
       };
     });
@@ -2137,6 +2231,40 @@ Examples:
                 {
                   type: 'text',
                   text: `Deleted resource: ${args.resource_id}`,
+                },
+              ],
+            };
+          }
+
+          // Revision Operations
+          case 'list_note_revisions': {
+            const result = await this.apiClient.listNoteRevisions(
+              args.note_id as string,
+              args.fields as string | undefined,
+              args.order_by as string | undefined,
+              args.order_dir as 'ASC' | 'DESC' | undefined,
+              args.limit as number | undefined,
+            );
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(result, null, 2),
+                },
+              ],
+            };
+          }
+
+          case 'get_revision': {
+            const result = await this.apiClient.getRevision(
+              args.revision_id as string,
+              args.fields as string | undefined,
+            );
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(result, null, 2),
                 },
               ],
             };
