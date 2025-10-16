@@ -511,12 +511,24 @@ export class JoplinApiClient {
   /**
    * List all resources (file attachments) globally
    */
-  async listAllResources(fields?: string): Promise<unknown> {
+  async listAllResources(
+    fields?: string,
+    orderBy?: string,
+    orderDir?: 'ASC' | 'DESC',
+  ): Promise<unknown> {
     const fieldsParam =
       fields ||
       'id,title,mime,filename,size,created_time,updated_time,file_extension,ocr_text,ocr_status';
 
-    return this.paginatedRequest(`/resources?fields=${fieldsParam}`);
+    let endpoint = `/resources?fields=${fieldsParam}`;
+    if (orderBy) {
+      endpoint += `&order_by=${orderBy}`;
+    }
+    if (orderDir) {
+      endpoint += `&order_dir=${orderDir}`;
+    }
+
+    return this.paginatedRequest(endpoint);
   }
 
   /**
@@ -1132,10 +1144,22 @@ Examples:
           {
             name: 'list_all_resources',
             description:
-              'List all file attachments (images, PDFs, etc.) across all notes. Returns metadata including OCR text if available.',
+              'List all file attachments (images, PDFs, etc.) across all notes. Returns metadata including OCR text if available. Optionally sort results.',
             inputSchema: {
               type: 'object',
-              properties: {},
+              properties: {
+                order_by: {
+                  type: 'string',
+                  description:
+                    'Field to sort by: title, updated_time, created_time, size (default: updated_time)',
+                },
+                order_dir: {
+                  type: 'string',
+                  enum: ['ASC', 'DESC'],
+                  description:
+                    'Sort direction: ASC (ascending) or DESC (descending). Default: DESC. Example: order_by=size, order_dir=DESC for largest first',
+                },
+              },
             },
           },
           {
@@ -1590,7 +1614,11 @@ Examples:
 
           // Resource Operations
           case 'list_all_resources': {
-            const result = await this.apiClient.listAllResources();
+            const result = await this.apiClient.listAllResources(
+              undefined,
+              args.order_by as string | undefined,
+              args.order_dir as 'ASC' | 'DESC' | undefined,
+            );
             return {
               content: [
                 {
