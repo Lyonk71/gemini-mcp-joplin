@@ -477,6 +477,14 @@ export class JoplinApiClient {
   }
 
   /**
+   * Get a specific tag by ID
+   */
+  async getTag(tagId: string, fields?: string): Promise<unknown> {
+    const fieldsParam = fields || 'id,title,created_time,updated_time';
+    return this.request('GET', `/tags/${tagId}?fields=${fieldsParam}`);
+  }
+
+  /**
    * Rename a tag by ID
    */
   async renameTag(tagId: string, newName: string): Promise<unknown> {
@@ -1313,6 +1321,26 @@ Examples:
             },
           },
           {
+            name: 'get_tag_by_id',
+            description:
+              'Get a specific tag by ID. Returns tag title and timestamps.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                tag_id: {
+                  type: 'string',
+                  description: 'The ID of the tag',
+                },
+                fields: {
+                  type: 'string',
+                  description:
+                    'Optional: Comma-separated list of fields to return (e.g., "id,title,updated_time"). Default: id,title,created_time,updated_time',
+                },
+              },
+              required: ['tag_id'],
+            },
+          },
+          {
             name: 'get_notes_by_tag',
             description:
               'Get all notes that have a specific tag. Provide either tag_id or tag_name. Optionally sort results.',
@@ -1893,6 +1921,21 @@ Examples:
                 {
                   type: 'text',
                   text: `Deleted tag ${args.tag_id}`,
+                },
+              ],
+            };
+          }
+
+          case 'get_tag_by_id': {
+            const result = await this.apiClient.getTag(
+              args.tag_id as string,
+              args.fields as string | undefined,
+            );
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(result, null, 2),
                 },
               ],
             };
