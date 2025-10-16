@@ -893,10 +893,15 @@ export class JoplinServer {
           {
             name: 'list_all_notes',
             description:
-              'List all notes across all notebooks. Returns note titles, IDs, content, and metadata. Optionally include deleted notes and sort results.',
+              'List all notes across all notebooks. Returns note titles, IDs, content, and metadata. Optionally include deleted notes, customize fields, and sort results.',
             inputSchema: {
               type: 'object',
               properties: {
+                fields: {
+                  type: 'string',
+                  description:
+                    'Optional: Comma-separated list of fields to return (e.g., "id,title,updated_time"). Default: id,title,body,parent_id,created_time,updated_time,user_created_time,user_updated_time,is_todo,todo_completed',
+                },
                 include_deleted: {
                   type: 'boolean',
                   description: 'Include deleted notes (default: false)',
@@ -1486,7 +1491,7 @@ Examples:
           // Note Operations
           case 'list_all_notes': {
             const result = await this.apiClient.listAllNotes(
-              undefined,
+              args.fields as string | undefined,
               args.include_deleted as boolean | undefined,
               args.order_by as string | undefined,
               args.order_dir as 'ASC' | 'DESC' | undefined,
