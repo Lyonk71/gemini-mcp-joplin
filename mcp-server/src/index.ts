@@ -223,6 +223,13 @@ export class JoplinApiClient {
     return this.paginatedRequest(endpoint, limit);
   }
 
+  async getNotebook(notebookId: string, fields?: string): Promise<unknown> {
+    const fieldsParam =
+      fields ||
+      'id,title,parent_id,created_time,updated_time,user_created_time,user_updated_time';
+    return this.request('GET', `/folders/${notebookId}?fields=${fieldsParam}`);
+  }
+
   async createNotebook(title: string, parentId?: string): Promise<unknown> {
     const body: Record<string, unknown> = { title };
     if (parentId) body.parent_id = parentId;
@@ -913,6 +920,26 @@ export class JoplinServer {
                 notebook_id: {
                   type: 'string',
                   description: 'The ID of the notebook to delete',
+                },
+              },
+              required: ['notebook_id'],
+            },
+          },
+          {
+            name: 'get_notebook_by_id',
+            description:
+              'Get a specific notebook by ID. Returns notebook title, parent_id, and timestamps.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                notebook_id: {
+                  type: 'string',
+                  description: 'The ID of the notebook',
+                },
+                fields: {
+                  type: 'string',
+                  description:
+                    'Optional: Comma-separated list of fields to return (e.g., "id,title,updated_time"). Default: id,title,parent_id,created_time,updated_time,user_created_time,user_updated_time',
                 },
               },
               required: ['notebook_id'],
@@ -1619,6 +1646,21 @@ Examples:
                 {
                   type: 'text',
                   text: `Deleted notebook ${args.notebook_id}`,
+                },
+              ],
+            };
+          }
+
+          case 'get_notebook_by_id': {
+            const result = await this.apiClient.getNotebook(
+              args.notebook_id as string,
+              args.fields as string | undefined,
+            );
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(result, null, 2),
                 },
               ],
             };
