@@ -8,9 +8,51 @@ Parse the user's input and call the appropriate Joplin tool.
 """
 
 [tools]
+search_notes = {
+  description = "Search for notes using query syntax",
+  args = {
+    query = "Search query with optional filters (title:, tag:, notebook:, etc.)"
+  }
+}
+
+list_all_notes = {
+  description = "List all notes with optional sorting",
+  args = {
+    order_by = "Field to sort by (optional)",
+    order_dir = "ASC or DESC (optional)"
+  }
+}
+
+create_note = {
+  description = "Create a new note",
+  args = {
+    title = "Note title",
+    body = "Note content",
+    notebook_id = "Notebook ID (optional)",
+    tags = "Comma-separated tags (optional)"
+  }
+}
+
+get_note = {
+  description = "Get a specific note by ID",
+  args = {
+    note_id = "The ID of the note"
+  }
+}
+
 delete_notebook = {
   description = "Delete a notebook. The notebook must be empty.",
   args = {
     notebook_id = "The ID of the notebook to delete"
   }
+}
+
+list_notebooks = {
+  description = "List all notebooks",
+  args = {}
+}
+
+list_tags = {
+  description = "List all tags",
+  args = {}
 }
