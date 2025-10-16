@@ -204,10 +204,19 @@ export class JoplinApiClient {
   }
 
   // Notebook (Folder) operations
-  async listNotebooks(): Promise<unknown> {
-    return this.paginatedRequest(
-      '/folders?fields=id,title,parent_id,created_time,updated_time,user_created_time,user_updated_time',
-    );
+  async listNotebooks(
+    orderBy?: string,
+    orderDir?: 'ASC' | 'DESC',
+  ): Promise<unknown> {
+    let endpoint =
+      '/folders?fields=id,title,parent_id,created_time,updated_time,user_created_time,user_updated_time';
+    if (orderBy) {
+      endpoint += `&order_by=${orderBy}`;
+    }
+    if (orderDir) {
+      endpoint += `&order_dir=${orderDir}`;
+    }
+    return this.paginatedRequest(endpoint);
   }
 
   async createNotebook(title: string, parentId?: string): Promise<unknown> {
@@ -700,10 +709,22 @@ export class JoplinServer {
           {
             name: 'list_notebooks',
             description:
-              'List all notebooks (folders) in Joplin. Returns notebook ID, title, parent ID, and timestamps.',
+              'List all notebooks (folders) in Joplin. Returns notebook ID, title, parent ID, and timestamps. Optionally sort results.',
             inputSchema: {
               type: 'object',
-              properties: {},
+              properties: {
+                order_by: {
+                  type: 'string',
+                  description:
+                    'Field to sort by: title, updated_time, created_time, user_updated_time, user_created_time (default: updated_time)',
+                },
+                order_dir: {
+                  type: 'string',
+                  enum: ['ASC', 'DESC'],
+                  description:
+                    'Sort direction: ASC (ascending) or DESC (descending). Default: DESC. Example: order_by=title, order_dir=ASC for alphabetical',
+                },
+              },
             },
           },
           {
@@ -1240,7 +1261,10 @@ Examples:
         switch (name) {
           // Notebook Management
           case 'list_notebooks': {
-            const result = await this.apiClient.listNotebooks();
+            const result = await this.apiClient.listNotebooks(
+              args.order_by as string | undefined,
+              args.order_dir as 'ASC' | 'DESC' | undefined,
+            );
             return {
               content: [
                 {
