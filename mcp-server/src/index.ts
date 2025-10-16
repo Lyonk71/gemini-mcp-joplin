@@ -208,6 +208,7 @@ export class JoplinApiClient {
     fields?: string,
     orderBy?: string,
     orderDir?: 'ASC' | 'DESC',
+    limit?: number,
   ): Promise<unknown> {
     const fieldsParam =
       fields ||
@@ -219,7 +220,7 @@ export class JoplinApiClient {
     if (orderDir) {
       endpoint += `&order_dir=${orderDir}`;
     }
-    return this.paginatedRequest(endpoint);
+    return this.paginatedRequest(endpoint, limit);
   }
 
   async createNotebook(title: string, parentId?: string): Promise<unknown> {
@@ -233,6 +234,7 @@ export class JoplinApiClient {
     fields?: string,
     orderBy?: string,
     orderDir?: 'ASC' | 'DESC',
+    limit?: number,
   ): Promise<unknown> {
     const fieldsParam =
       fields ||
@@ -244,7 +246,7 @@ export class JoplinApiClient {
     if (orderDir) {
       endpoint += `&order_dir=${orderDir}`;
     }
-    return this.paginatedRequest(endpoint);
+    return this.paginatedRequest(endpoint, limit);
   }
 
   async updateNotebook(
@@ -268,6 +270,7 @@ export class JoplinApiClient {
     includeDeleted = false,
     orderBy?: string,
     orderDir?: 'ASC' | 'DESC',
+    limit?: number,
   ): Promise<unknown> {
     const fieldsParam =
       fields ||
@@ -284,7 +287,7 @@ export class JoplinApiClient {
       endpoint += `&order_dir=${orderDir}`;
     }
 
-    return this.paginatedRequest(endpoint);
+    return this.paginatedRequest(endpoint, limit);
   }
 
   async searchNotes(query: string, type?: string): Promise<unknown> {
@@ -453,6 +456,7 @@ export class JoplinApiClient {
     fields?: string,
     orderBy?: string,
     orderDir?: 'ASC' | 'DESC',
+    limit?: number,
   ): Promise<unknown> {
     const fieldsParam = fields || 'id,title,created_time,updated_time';
     let endpoint = `/tags?fields=${fieldsParam}`;
@@ -462,7 +466,7 @@ export class JoplinApiClient {
     if (orderDir) {
       endpoint += `&order_dir=${orderDir}`;
     }
-    return this.paginatedRequest(endpoint);
+    return this.paginatedRequest(endpoint, limit);
   }
 
   /**
@@ -501,6 +505,7 @@ export class JoplinApiClient {
     fields?: string,
     orderBy?: string,
     orderDir?: 'ASC' | 'DESC',
+    limit?: number,
   ): Promise<unknown> {
     const fieldsParam =
       fields ||
@@ -513,7 +518,7 @@ export class JoplinApiClient {
     if (orderDir) {
       endpoint += `&order_dir=${orderDir}`;
     }
-    return this.paginatedRequest(endpoint);
+    return this.paginatedRequest(endpoint, limit);
   }
 
   /**
@@ -524,6 +529,7 @@ export class JoplinApiClient {
     fields?: string,
     orderBy?: string,
     orderDir?: 'ASC' | 'DESC',
+    limit?: number,
   ): Promise<unknown> {
     // Search for tag by exact name
     const tags = (await this.searchNotes(tagName, 'tag')) as Array<{
@@ -539,7 +545,7 @@ export class JoplinApiClient {
       throw new Error(`Tag not found: ${tagName}`);
     }
 
-    return this.getTagNotes(exactMatch.id, fields, orderBy, orderDir);
+    return this.getTagNotes(exactMatch.id, fields, orderBy, orderDir, limit);
   }
 
   // Resource operations
@@ -550,6 +556,7 @@ export class JoplinApiClient {
     fields?: string,
     orderBy?: string,
     orderDir?: 'ASC' | 'DESC',
+    limit?: number,
   ): Promise<unknown> {
     const fieldsParam =
       fields ||
@@ -563,7 +570,7 @@ export class JoplinApiClient {
       endpoint += `&order_dir=${orderDir}`;
     }
 
-    return this.paginatedRequest(endpoint);
+    return this.paginatedRequest(endpoint, limit);
   }
 
   /**
@@ -591,6 +598,7 @@ export class JoplinApiClient {
     fields?: string,
     orderBy?: string,
     orderDir?: 'ASC' | 'DESC',
+    limit?: number,
   ): Promise<unknown> {
     const fieldsParam =
       fields ||
@@ -603,7 +611,7 @@ export class JoplinApiClient {
     if (orderDir) {
       endpoint += `&order_dir=${orderDir}`;
     }
-    return this.paginatedRequest(endpoint);
+    return this.paginatedRequest(endpoint, limit);
   }
 
   /**
@@ -614,6 +622,7 @@ export class JoplinApiClient {
     fields?: string,
     orderBy?: string,
     orderDir?: 'ASC' | 'DESC',
+    limit?: number,
   ): Promise<unknown> {
     const fieldsParam =
       fields || 'id,title,parent_id,created_time,updated_time';
@@ -625,7 +634,7 @@ export class JoplinApiClient {
     if (orderDir) {
       endpoint += `&order_dir=${orderDir}`;
     }
-    return this.paginatedRequest(endpoint);
+    return this.paginatedRequest(endpoint, limit);
   }
 
   /**
@@ -801,6 +810,11 @@ export class JoplinServer {
                   description:
                     'Sort direction: ASC (ascending) or DESC (descending). Default: DESC. Example: order_by=title, order_dir=ASC for alphabetical',
                 },
+                limit: {
+                  type: 'number',
+                  description:
+                    'Optional: Maximum number of items to return (default: 100)',
+                },
               },
             },
           },
@@ -850,6 +864,11 @@ export class JoplinServer {
                   enum: ['ASC', 'DESC'],
                   description:
                     'Sort direction: ASC (ascending) or DESC (descending). Default: DESC',
+                },
+                limit: {
+                  type: 'number',
+                  description:
+                    'Optional: Maximum number of items to return (default: 100)',
                 },
               },
               required: ['notebook_id'],
@@ -938,6 +957,11 @@ export class JoplinServer {
                   enum: ['ASC', 'DESC'],
                   description:
                     'Sort direction: ASC (ascending) or DESC (descending). Default: DESC. Example: order_by=updated_time, order_dir=DESC for most recent first',
+                },
+                limit: {
+                  type: 'number',
+                  description:
+                    'Optional: Maximum number of items to return (default: 100)',
                 },
               },
             },
@@ -1207,6 +1231,11 @@ Examples:
                   description:
                     'Sort direction: ASC (ascending) or DESC (descending). Default: DESC. Example: order_by=title, order_dir=ASC for alphabetical',
                 },
+                limit: {
+                  type: 'number',
+                  description:
+                    'Optional: Maximum number of items to return (default: 100)',
+                },
               },
             },
           },
@@ -1265,6 +1294,11 @@ Examples:
                   description:
                     'Sort direction: ASC (ascending) or DESC (descending). Default: DESC',
                 },
+                limit: {
+                  type: 'number',
+                  description:
+                    'Optional: Maximum number of items to return (default: 100)',
+                },
               },
             },
           },
@@ -1292,6 +1326,11 @@ Examples:
                   enum: ['ASC', 'DESC'],
                   description:
                     'Sort direction: ASC (ascending) or DESC (descending). Default: DESC. Example: order_by=size, order_dir=DESC for largest first',
+                },
+                limit: {
+                  type: 'number',
+                  description:
+                    'Optional: Maximum number of items to return (default: 100)',
                 },
               },
             },
@@ -1338,6 +1377,11 @@ Examples:
                   description:
                     'Sort direction: ASC (ascending) or DESC (descending). Default: DESC',
                 },
+                limit: {
+                  type: 'number',
+                  description:
+                    'Optional: Maximum number of items to return (default: 100)',
+                },
               },
               required: ['note_id'],
             },
@@ -1368,6 +1412,11 @@ Examples:
                   enum: ['ASC', 'DESC'],
                   description:
                     'Sort direction: ASC (ascending) or DESC (descending). Default: DESC',
+                },
+                limit: {
+                  type: 'number',
+                  description:
+                    'Optional: Maximum number of items to return (default: 100)',
                 },
               },
               required: ['resource_id'],
@@ -1476,6 +1525,7 @@ Examples:
               args.fields as string | undefined,
               args.order_by as string | undefined,
               args.order_dir as 'ASC' | 'DESC' | undefined,
+              args.limit as number | undefined,
             );
             return {
               content: [
@@ -1508,6 +1558,7 @@ Examples:
               args.fields as string | undefined,
               args.order_by as string | undefined,
               args.order_dir as 'ASC' | 'DESC' | undefined,
+              args.limit as number | undefined,
             );
             return {
               content: [
@@ -1573,6 +1624,7 @@ Examples:
               args.include_deleted as boolean | undefined,
               args.order_by as string | undefined,
               args.order_dir as 'ASC' | 'DESC' | undefined,
+              args.limit as number | undefined,
             );
             return {
               content: [
@@ -1733,6 +1785,7 @@ Examples:
               args.fields as string | undefined,
               args.order_by as string | undefined,
               args.order_dir as 'ASC' | 'DESC' | undefined,
+              args.limit as number | undefined,
             );
             return {
               content: [
@@ -1777,6 +1830,7 @@ Examples:
                 args.fields as string | undefined,
                 args.order_by as string | undefined,
                 args.order_dir as 'ASC' | 'DESC' | undefined,
+                args.limit as number | undefined,
               );
             } else if (args.tag_name) {
               result = await this.apiClient.getNotesByTagName(
@@ -1784,6 +1838,7 @@ Examples:
                 args.fields as string | undefined,
                 args.order_by as string | undefined,
                 args.order_dir as 'ASC' | 'DESC' | undefined,
+                args.limit as number | undefined,
               );
             } else {
               throw new Error('Must provide either tag_id or tag_name');
@@ -1805,6 +1860,7 @@ Examples:
               args.fields as string | undefined,
               args.order_by as string | undefined,
               args.order_dir as 'ASC' | 'DESC' | undefined,
+              args.limit as number | undefined,
             );
             return {
               content: [
@@ -1836,6 +1892,7 @@ Examples:
               args.fields as string | undefined,
               args.order_by as string | undefined,
               args.order_dir as 'ASC' | 'DESC' | undefined,
+              args.limit as number | undefined,
             );
             return {
               content: [
@@ -1853,6 +1910,7 @@ Examples:
               args.fields as string | undefined,
               args.order_by as string | undefined,
               args.order_dir as 'ASC' | 'DESC' | undefined,
+              args.limit as number | undefined,
             );
             return {
               content: [
