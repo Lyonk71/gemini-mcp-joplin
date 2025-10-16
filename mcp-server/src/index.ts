@@ -244,7 +244,10 @@ export class JoplinApiClient {
   }
 
   // Note operations
-  async listAllNotes(fields?: string, includeDeleted = false): Promise<unknown> {
+  async listAllNotes(
+    fields?: string,
+    includeDeleted = false,
+  ): Promise<unknown> {
     const fieldsParam =
       fields ||
       'id,title,body,parent_id,created_time,updated_time,user_created_time,user_updated_time,is_todo,todo_completed';
@@ -399,7 +402,10 @@ export class JoplinApiClient {
       if (exactMatch) {
         // Remove tag from note (ignore errors if tag isn't on note)
         try {
-          await this.request('DELETE', `/tags/${exactMatch.id}/notes/${noteId}`);
+          await this.request(
+            'DELETE',
+            `/tags/${exactMatch.id}/notes/${noteId}`,
+          );
         } catch {
           // Tag wasn't on note, that's fine
         }
@@ -411,7 +417,9 @@ export class JoplinApiClient {
    * List all tags in Joplin
    */
   async listTags(): Promise<unknown> {
-    return this.paginatedRequest('/tags?fields=id,title,created_time,updated_time');
+    return this.paginatedRequest(
+      '/tags?fields=id,title,created_time,updated_time',
+    );
   }
 
   /**
@@ -489,12 +497,18 @@ export class JoplinApiClient {
   /**
    * Get metadata for a specific resource
    */
-  async getResourceMetadata(resourceId: string, fields?: string): Promise<unknown> {
+  async getResourceMetadata(
+    resourceId: string,
+    fields?: string,
+  ): Promise<unknown> {
     const fieldsParam =
       fields ||
       'id,title,mime,filename,size,file_extension,created_time,updated_time,blob_updated_time,is_shared,share_id,ocr_text,ocr_status';
 
-    return this.request('GET', `/resources/${resourceId}?fields=${fieldsParam}`);
+    return this.request(
+      'GET',
+      `/resources/${resourceId}?fields=${fieldsParam}`,
+    );
   }
 
   /**
@@ -505,18 +519,24 @@ export class JoplinApiClient {
       fields ||
       'id,title,mime,filename,size,file_extension,created_time,updated_time';
 
-    return this.paginatedRequest(`/notes/${noteId}/resources?fields=${fieldsParam}`);
+    return this.paginatedRequest(
+      `/notes/${noteId}/resources?fields=${fieldsParam}`,
+    );
   }
 
   /**
    * Get all notes that use a specific resource (reverse lookup)
    */
-  async getResourceNotes(resourceId: string, fields?: string): Promise<unknown> {
+  async getResourceNotes(
+    resourceId: string,
+    fields?: string,
+  ): Promise<unknown> {
     const fieldsParam =
-      fields ||
-      'id,title,parent_id,created_time,updated_time';
+      fields || 'id,title,parent_id,created_time,updated_time';
 
-    return this.paginatedRequest(`/resources/${resourceId}/notes?fields=${fieldsParam}`);
+    return this.paginatedRequest(
+      `/resources/${resourceId}/notes?fields=${fieldsParam}`,
+    );
   }
 
   /**
@@ -538,7 +558,10 @@ export class JoplinApiClient {
   /**
    * Download a resource to a file
    */
-  async downloadResourceToFile(resourceId: string, outputPath: string): Promise<void> {
+  async downloadResourceToFile(
+    resourceId: string,
+    outputPath: string,
+  ): Promise<void> {
     const fs = await import('fs');
     const buffer = await this.downloadResource(resourceId);
     fs.writeFileSync(outputPath, buffer);
@@ -712,7 +735,8 @@ export class JoplinServer {
           },
           {
             name: 'update_notebook',
-            description: 'Update notebook properties (rename or move to different parent).',
+            description:
+              'Update notebook properties (rename or move to different parent).',
             inputSchema: {
               type: 'object',
               properties: {
@@ -768,7 +792,8 @@ export class JoplinServer {
           // Note Operations
           {
             name: 'list_all_notes',
-            description: 'List all notes across all notebooks. Returns note titles, IDs, content, and metadata. Optionally include deleted notes.',
+            description:
+              'List all notes across all notebooks. Returns note titles, IDs, content, and metadata. Optionally include deleted notes.',
             inputSchema: {
               type: 'object',
               properties: {
@@ -781,8 +806,39 @@ export class JoplinServer {
           },
           {
             name: 'search_notes',
-            description:
-              'Search for notes using keywords. Supports wildcards (*). Can optionally filter by type (note, folder, tag).',
+            description: `Search for notes using Joplin's powerful query syntax.
+
+Basic syntax:
+- Single/multiple words: "linux kernel" (AND logic by default)
+- Phrases: "shopping list" (exact match)
+- Wildcards: "swim*" (prefix matching)
+- Exclusion: "-spam" (exclude term)
+
+Field-specific filters:
+- title:TERM - Search in title only
+- body:TERM - Search in body only
+- tag:TAG - Filter by tag (supports wildcards: tag:proj*)
+- notebook:NAME - Filter by notebook name
+- resource:MIME - Filter by attachment type (resource:image/*, resource:application/pdf)
+
+Date filters (formats: YYYYMMDD, YYYYMM, YYYY, or relative like day-7, month-1, year-0):
+- created:DATE - Filter by creation date
+- updated:DATE - Filter by update date
+- due:DATE - Filter by todo due date
+
+Type filters:
+- type:note|todo - Filter by item type
+- iscompleted:0|1 - Filter completed/incomplete todos
+
+Boolean logic:
+- any:1 - Use OR instead of AND (example: "any:1 arch ubuntu" finds either)
+
+Examples:
+- Find Linux tutorials: "title:linux tag:tutorial"
+- Recent work notes: "tag:work updated:month-1"
+- Notes with images: "resource:image/*"
+- Exclude archived: "project -tag:archived"
+- Either/or search: "any:1 kubernetes docker"`,
             inputSchema: {
               type: 'object',
               properties: {
@@ -925,7 +981,7 @@ export class JoplinServer {
           {
             name: 'add_tags_to_note',
             description:
-              'Add tags to an existing note. Tags will be created if they don\'t exist. Tags are added to any existing tags (not replaced).',
+              "Add tags to an existing note. Tags will be created if they don't exist. Tags are added to any existing tags (not replaced).",
             inputSchema: {
               type: 'object',
               properties: {
@@ -944,7 +1000,7 @@ export class JoplinServer {
           {
             name: 'remove_tags_from_note',
             description:
-              'Remove specific tags from a note. Silently ignores tags that don\'t exist or aren\'t on the note.',
+              "Remove specific tags from a note. Silently ignores tags that don't exist or aren't on the note.",
             inputSchema: {
               type: 'object',
               properties: {
@@ -962,7 +1018,8 @@ export class JoplinServer {
           },
           {
             name: 'list_tags',
-            description: 'List all tags in Joplin. Returns tag IDs, names, and timestamps.',
+            description:
+              'List all tags in Joplin. Returns tag IDs, names, and timestamps.',
             inputSchema: {
               type: 'object',
               properties: {},
@@ -970,13 +1027,15 @@ export class JoplinServer {
           },
           {
             name: 'rename_tag',
-            description: 'Rename a tag. All notes with this tag will show the new name. Provide either tag_id or current_name.',
+            description:
+              'Rename a tag. All notes with this tag will show the new name. Provide either tag_id or current_name.',
             inputSchema: {
               type: 'object',
               properties: {
                 tag_id: {
                   type: 'string',
-                  description: 'The ID of the tag to rename (use this OR current_name)',
+                  description:
+                    'The ID of the tag to rename (use this OR current_name)',
                 },
                 current_name: {
                   type: 'string',
@@ -992,7 +1051,8 @@ export class JoplinServer {
           },
           {
             name: 'get_notes_by_tag',
-            description: 'Get all notes that have a specific tag. Provide either tag_id or tag_name.',
+            description:
+              'Get all notes that have a specific tag. Provide either tag_id or tag_name.',
             inputSchema: {
               type: 'object',
               properties: {
@@ -1011,7 +1071,8 @@ export class JoplinServer {
           // Resource Operations
           {
             name: 'list_all_resources',
-            description: 'List all file attachments (images, PDFs, etc.) across all notes. Returns metadata including OCR text if available.',
+            description:
+              'List all file attachments (images, PDFs, etc.) across all notes. Returns metadata including OCR text if available.',
             inputSchema: {
               type: 'object',
               properties: {},
@@ -1019,7 +1080,8 @@ export class JoplinServer {
           },
           {
             name: 'get_resource_metadata',
-            description: 'Get metadata for a specific resource/attachment including size, MIME type, OCR text, and timestamps.',
+            description:
+              'Get metadata for a specific resource/attachment including size, MIME type, OCR text, and timestamps.',
             inputSchema: {
               type: 'object',
               properties: {
@@ -1047,7 +1109,8 @@ export class JoplinServer {
           },
           {
             name: 'get_resource_notes',
-            description: 'Find all notes that reference/use a specific resource/attachment. Essential before deleting a resource.',
+            description:
+              'Find all notes that reference/use a specific resource/attachment. Essential before deleting a resource.',
             inputSchema: {
               type: 'object',
               properties: {
@@ -1061,7 +1124,8 @@ export class JoplinServer {
           },
           {
             name: 'download_attachment',
-            description: 'Download a file attachment from Joplin by resource ID. Saves to specified path.',
+            description:
+              'Download a file attachment from Joplin by resource ID. Saves to specified path.',
             inputSchema: {
               type: 'object',
               properties: {
@@ -1079,7 +1143,8 @@ export class JoplinServer {
           },
           {
             name: 'upload_attachment',
-            description: 'Upload a file attachment (image, PDF, etc.) to Joplin. Returns resource ID that can be referenced in notes.',
+            description:
+              'Upload a file attachment (image, PDF, etc.) to Joplin. Returns resource ID that can be referenced in notes.',
             inputSchema: {
               type: 'object',
               properties: {
@@ -1101,7 +1166,8 @@ export class JoplinServer {
           },
           {
             name: 'update_resource',
-            description: 'Update a resource/attachment. Can update file content, metadata (title), or both.',
+            description:
+              'Update a resource/attachment. Can update file content, metadata (title), or both.',
             inputSchema: {
               type: 'object',
               properties: {
@@ -1127,7 +1193,8 @@ export class JoplinServer {
           },
           {
             name: 'delete_resource',
-            description: 'Delete a resource/attachment from Joplin. WARNING: This will break references in notes that use this resource. Use get_resource_notes first to check usage.',
+            description:
+              'Delete a resource/attachment from Joplin. WARNING: This will break references in notes that use this resource. Use get_resource_notes first to check usage.',
             inputSchema: {
               type: 'object',
               properties: {
@@ -1407,14 +1474,13 @@ export class JoplinServer {
           }
 
           case 'rename_tag': {
-            let result;
             if (args.tag_id) {
-              result = await this.apiClient.renameTag(
+              await this.apiClient.renameTag(
                 args.tag_id as string,
                 args.new_name as string,
               );
             } else if (args.current_name) {
-              result = await this.apiClient.renameTagByName(
+              await this.apiClient.renameTagByName(
                 args.current_name as string,
                 args.new_name as string,
               );
@@ -1437,7 +1503,9 @@ export class JoplinServer {
             if (args.tag_id) {
               result = await this.apiClient.getTagNotes(args.tag_id as string);
             } else if (args.tag_name) {
-              result = await this.apiClient.getNotesByTagName(args.tag_name as string);
+              result = await this.apiClient.getNotesByTagName(
+                args.tag_name as string,
+              );
             } else {
               throw new Error('Must provide either tag_id or tag_name');
             }
@@ -1466,7 +1534,9 @@ export class JoplinServer {
           }
 
           case 'get_resource_metadata': {
-            const result = await this.apiClient.getResourceMetadata(args.resource_id as string);
+            const result = await this.apiClient.getResourceMetadata(
+              args.resource_id as string,
+            );
             return {
               content: [
                 {
@@ -1478,7 +1548,9 @@ export class JoplinServer {
           }
 
           case 'get_note_attachments': {
-            const result = await this.apiClient.getNoteResources(args.note_id as string);
+            const result = await this.apiClient.getNoteResources(
+              args.note_id as string,
+            );
             return {
               content: [
                 {
@@ -1490,7 +1562,9 @@ export class JoplinServer {
           }
 
           case 'get_resource_notes': {
-            const result = await this.apiClient.getResourceNotes(args.resource_id as string);
+            const result = await this.apiClient.getResourceNotes(
+              args.resource_id as string,
+            );
             return {
               content: [
                 {
@@ -1554,7 +1628,9 @@ export class JoplinServer {
                 { title: args.title as string },
               )) as { title: string; id: string };
             } else {
-              throw new Error('Must provide either file_path or title to update');
+              throw new Error(
+                'Must provide either file_path or title to update',
+              );
             }
 
             return {
@@ -1569,9 +1645,13 @@ export class JoplinServer {
 
           case 'delete_resource': {
             // Optional: Check for note references first
-            const notes = await this.apiClient.getResourceNotes(args.resource_id as string) as { items: unknown[] } | unknown[];
+            const notes = (await this.apiClient.getResourceNotes(
+              args.resource_id as string,
+            )) as { items: unknown[] } | unknown[];
 
-            const items = Array.isArray(notes) ? notes : (notes as { items: unknown[] }).items;
+            const items = Array.isArray(notes)
+              ? notes
+              : (notes as { items: unknown[] }).items;
 
             if (items && items.length > 0) {
               return {
