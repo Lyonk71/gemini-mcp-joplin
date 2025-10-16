@@ -498,6 +498,13 @@ export class JoplinApiClient {
   }
 
   /**
+   * Delete a tag by ID
+   */
+  async deleteTag(tagId: string): Promise<unknown> {
+    return this.request('DELETE', `/tags/${tagId}`);
+  }
+
+  /**
    * Get all notes that have a specific tag
    */
   async getTagNotes(
@@ -1264,6 +1271,21 @@ Examples:
             },
           },
           {
+            name: 'delete_tag',
+            description:
+              'Delete a tag from Joplin. All notes will no longer have this tag.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                tag_id: {
+                  type: 'string',
+                  description: 'The ID of the tag to delete',
+                },
+              },
+              required: ['tag_id'],
+            },
+          },
+          {
             name: 'get_notes_by_tag',
             description:
               'Get all notes that have a specific tag. Provide either tag_id or tag_name. Optionally sort results.',
@@ -1817,6 +1839,18 @@ Examples:
                 {
                   type: 'text',
                   text: `Renamed tag to: ${args.new_name}`,
+                },
+              ],
+            };
+          }
+
+          case 'delete_tag': {
+            await this.apiClient.deleteTag(args.tag_id as string);
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `Deleted tag ${args.tag_id}`,
                 },
               ],
             };
