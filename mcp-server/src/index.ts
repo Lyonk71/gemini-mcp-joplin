@@ -433,10 +433,18 @@ export class JoplinApiClient {
   /**
    * List all tags in Joplin
    */
-  async listTags(): Promise<unknown> {
-    return this.paginatedRequest(
-      '/tags?fields=id,title,created_time,updated_time',
-    );
+  async listTags(
+    orderBy?: string,
+    orderDir?: 'ASC' | 'DESC',
+  ): Promise<unknown> {
+    let endpoint = '/tags?fields=id,title,created_time,updated_time';
+    if (orderBy) {
+      endpoint += `&order_by=${orderBy}`;
+    }
+    if (orderDir) {
+      endpoint += `&order_dir=${orderDir}`;
+    }
+    return this.paginatedRequest(endpoint);
   }
 
   /**
@@ -1059,10 +1067,22 @@ Examples:
           {
             name: 'list_tags',
             description:
-              'List all tags in Joplin. Returns tag IDs, names, and timestamps.',
+              'List all tags in Joplin. Returns tag IDs, names, and timestamps. Optionally sort results.',
             inputSchema: {
               type: 'object',
-              properties: {},
+              properties: {
+                order_by: {
+                  type: 'string',
+                  description:
+                    'Field to sort by: title, updated_time, created_time (default: updated_time)',
+                },
+                order_dir: {
+                  type: 'string',
+                  enum: ['ASC', 'DESC'],
+                  description:
+                    'Sort direction: ASC (ascending) or DESC (descending). Default: DESC. Example: order_by=title, order_dir=ASC for alphabetical',
+                },
+              },
             },
           },
           {
@@ -1507,7 +1527,10 @@ Examples:
           }
 
           case 'list_tags': {
-            const result = await this.apiClient.listTags();
+            const result = await this.apiClient.listTags(
+              args.order_by as string | undefined,
+              args.order_dir as 'ASC' | 'DESC' | undefined,
+            );
             return {
               content: [
                 {
