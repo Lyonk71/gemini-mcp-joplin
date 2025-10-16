@@ -1053,7 +1053,7 @@ Examples:
           {
             name: 'update_note',
             description:
-              'Update an existing note. Can update title, body, or notebook. Use add_tags_to_note or remove_tags_from_note to modify tags.',
+              'Update an existing note. Can update title, body, notebook, or convert to/from todo. Use add_tags_to_note or remove_tags_from_note to modify tags.',
             inputSchema: {
               type: 'object',
               properties: {
@@ -1073,6 +1073,21 @@ Examples:
                 notebook_id: {
                   type: 'string',
                   description: 'Optional: Move note to a different notebook',
+                },
+                is_todo: {
+                  type: 'number',
+                  description:
+                    'Optional: Set to 1 to convert to todo, 0 to convert to regular note',
+                },
+                todo_due: {
+                  type: 'number',
+                  description:
+                    'Optional: Unix timestamp (in milliseconds) for when the todo is due. Only applicable when is_todo=1',
+                },
+                todo_completed: {
+                  type: 'number',
+                  description:
+                    'Optional: Unix timestamp (in milliseconds) for when the todo was completed. Set to 0 to mark incomplete, or a timestamp to mark complete. Only applicable when is_todo=1',
                 },
               },
               required: ['note_id'],
@@ -1621,6 +1636,10 @@ Examples:
             if (args.title) updates.title = args.title;
             if (args.body) updates.body = args.body;
             if (args.notebook_id) updates.parent_id = args.notebook_id;
+            if (args.is_todo !== undefined) updates.is_todo = args.is_todo;
+            if (args.todo_due !== undefined) updates.todo_due = args.todo_due;
+            if (args.todo_completed !== undefined)
+              updates.todo_completed = args.todo_completed;
 
             const result = (await this.apiClient.updateNote(
               args.note_id as string,
